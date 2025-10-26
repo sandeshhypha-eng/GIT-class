@@ -1,0 +1,35 @@
+name: EC2 System Monitor
+
+# Run daily at 9 PM IST (15:30 UTC)
+on:
+  schedule:
+    - cron: '30 15 * * *'
+  workflow_dispatch:
+
+jobs:
+  monitor-ec2:
+    runs-on: ubuntu-latest
+
+    steps:
+      # Step 1: Checkout repo (if script is in repo)
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      # Step 2: Setup SSH key
+      - name: Setup SSH key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.EC2_SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+
+      # Step 3: Add EC2 host to known_hosts to avoid prompt
+      - name: Add EC2 to known_hosts
+        run: |
+          ssh-keyscan -H "${{ secrets.EC2_HOST }}" >> ~/.ssh/known_hosts
+
+      # Step 4: SSH into EC2 and run Bash monitoring script
+      - name: Run monitor script on EC2
+        run: |
+          ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=yes ec2-user@${{ secrets.EC2_HOST }} 'bash -s' < ./scripts/monitor_system.sh
+        env:
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
