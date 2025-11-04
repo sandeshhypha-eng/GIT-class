@@ -1,0 +1,234 @@
+ * {
+      box-sizing: border-box;
+      font-family: "SF Pro Display", "Poppins", sans-serif;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      background: radial-gradient(circle at top left, #0a0a0a, #1a1a1a);
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      margin: 0;
+      color: white;
+      padding: 20px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    /* --- Subtle chess-like overlay --- */
+    body::before {
+      content: "";
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      background-image: 
+        linear-gradient(45deg, rgba(255,255,255,0.03) 25%, transparent 25%, transparent 75%, rgba(255,255,255,0.03) 75%),
+        linear-gradient(45deg, rgba(255,255,255,0.03) 25%, transparent 25%, transparent 75%, rgba(255,255,255,0.03) 75%);
+      background-size: 40px 40px;
+      background-position: 0 0, 20px 20px;
+      z-index: 0;
+    }
+
+    /* --- Calculator Container --- */
+    .calculator {
+      background: rgba(255, 255, 255, 0.08);
+      backdrop-filter: blur(20px) saturate(180%);
+      -webkit-backdrop-filter: blur(20px) saturate(180%);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 40px;
+      padding: 25px;
+      width: 100%;
+      max-width: 380px;
+      box-shadow:
+        0 8px 32px rgba(0, 0, 0, 0.5),
+        inset 0 0 10px rgba(255, 255, 255, 0.05);
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      transition: all 0.3s ease;
+      z-index: 1;
+    }
+
+    /* --- Display --- */
+    .display {
+      width: 100%;
+      height: 100px;
+      background: rgba(255, 255, 255, 0.08);
+      color: #fff;
+      border: none;
+      border-radius: 20px;
+      font-size: 3rem;
+      text-align: right;
+      padding: 10px 20px;
+      margin-bottom: 25px;
+      outline: none;
+      box-shadow: inset 0 4px 12px rgba(0, 0, 0, 0.5);
+      backdrop-filter: blur(10px);
+    }
+
+    /* --- Buttons Grid --- */
+    .buttons {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      grid-gap: 15px;
+    }
+
+    button {
+      aspect-ratio: 1 / 1;
+      border: none;
+      border-radius: 50%;
+      font-size: 1.8rem;
+      cursor: pointer;
+      transition: all 0.2s ease-in-out;
+      font-weight: 500;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      color: white;
+      background: rgba(255, 255, 255, 0.12);
+      backdrop-filter: blur(10px);
+      box-shadow:
+        inset 1px 1px 3px rgba(255, 255, 255, 0.2),
+        2px 2px 8px rgba(0, 0, 0, 0.3);
+    }
+
+    button:hover {
+      transform: scale(1.08);
+      background: rgba(255, 255, 255, 0.18);
+    }
+
+    button:active {
+      transform: scale(0.95);
+      filter: brightness(1.2);
+    }
+
+    /* --- Button Colors --- */
+    .btn-light {
+      color: black;
+      background: rgba(255, 255, 255, 0.4);
+    }
+
+    .btn-orange {
+      background: rgba(255, 149, 0, 0.8);
+    }
+
+    .zero {
+      grid-column: span 2;
+      border-radius: 40px;
+      justify-content: flex-start;
+      padding-left: 30px;
+      height: 75px;
+      aspect-ratio: auto;
+    }
+
+    .equal {
+      background: rgba(255, 149, 0, 0.9);
+      color: #fff;
+    }
+
+    /* --- Footer --- */
+    .footer {
+      text-align: center;
+      margin-top: 25px;
+    }
+
+    .coffee-btn {
+      background-color: #ffdd00;
+      color: #000;
+      font-weight: 600;
+      border: none;
+      padding: 10px 18px;
+      border-radius: 30px;
+      font-size: 0.9rem;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
+      text-decoration: none;
+      box-shadow: 0 3px 10px rgba(255, 221, 0, 0.4);
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+      margin-bottom: 8px;
+    }
+
+    .coffee-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 14px rgba(255, 221, 0, 0.6);
+    }
+
+    .coffee-btn img {
+      width: 20px;
+      height: 20px;
+    }
+
+    .hypha {
+      font-size: 0.85rem;
+      color: #bbb;
+      margin-top: 5px;
+      letter-spacing: 0.3px;
+    }
+
+    .hypha a {
+      color: #00e0ff;
+      text-decoration: none;
+      font-weight: 600;
+    }
+
+    .hypha a:hover {
+      text-decoration: underline;
+    }
+
+    /* --- Responsive Design --- */
+    @media (max-width: 500px) {
+      .calculator {
+        max-width: 320px;
+        padding: 20px;
+        border-radius: 30px;
+      }
+
+      .display {
+        font-size: 2.4rem;
+        height: 80px;
+      }
+
+      button {
+        font-size: 1.5rem;
+      }
+
+      .zero {
+        height: 65px;
+        padding-left: 25px;
+      }
+
+      .coffee-btn {
+        font-size: 0.8rem;
+        padding: 8px 14px;
+      }
+    }
+
+    @media (max-width: 360px) {
+      .calculator {
+        max-width: 280px;
+        padding: 15px;
+      }
+
+      .display {
+        font-size: 2rem;
+        height: 70px;
+      }
+
+      button {
+        font-size: 1.3rem;
+      }
+
+      .zero {
+        height: 55px;
+      }
+    }
+
+    @media (min-width: 768px) {
+      .calculator {
+        transform: scale(1.1);
+      }
+    }
