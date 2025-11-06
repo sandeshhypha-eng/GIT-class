@@ -3,7 +3,7 @@
 # Monitors CPU, memory, and disk usage and sends a report to Discord
 
 # === CONFIG ===
-DISCORD_WEBHOOK="${DISCORD_WEBHOOK}"  # Set this environment variable
+DISCORD_WEBHOOK="https://discord.com/api/webhooks/1436030080416743428/p2Rq5HW6mc34tmlG5R9UaORHc3l54JPMIArH7yhJ1goJnKm2ZG9kcBGls3jqrKmPMhYA"  # Set this environment variable
 CPU_THRESHOLD=80
 MEM_THRESHOLD=80
 DISK_THRESHOLD=80
