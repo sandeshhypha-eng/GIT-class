@@ -30,6 +30,6 @@ jobs:
       # Step 4: SSH into EC2 and run Bash monitoring script
       - name: Run monitor script on EC2
         run: |
-          ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=yes ec2-user@${{ secrets.EC2_HOST }} 'bash -s' < ./monitor.sh
+          ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=yes ec2-user@${{ secrets.EC2_HOST }} 'bash -s' < ./moniter.sh
         env:
           DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
