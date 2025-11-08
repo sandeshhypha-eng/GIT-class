@@ -31,7 +31,7 @@ jobs:
           pip install boto3 requests
 
       - name: Run AWS Cost Report
-        run: python scripts/cost_report.py
+        run: python cost.py
         env:
           DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
           BILLING_CURRENCY: INR
