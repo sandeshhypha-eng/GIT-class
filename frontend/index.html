@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Calculator</title>
+    <script>
+        async function calculate(op) {
+            let a = document.getElementById("num1").value;
+            let b = document.getElementById("num2").value;
+            let res = await fetch(`http://localhost:8080/calc/${op}?a=${a}&b=${b}`);
+            let result = await res.text();
+            document.getElementById("result").innerText = result;
+        }
+    </script>
+</head>
+<body>
+    <h1>Simple Calculator</h1>
+    Number 1: <input type="number" id="num1"><br><br>
+    Number 2: <input type="number" id="num2"><br><br>
+
+    <button onclick="calculate('add')">+</button>
+    <button onclick="calculate('sub')">-</button>
+    <button onclick="calculate('mul')">*</button>
+    <button onclick="calculate('div')">/</button>
+
+    <h2>Result: <span id="result"></span></h2>
+</body>
+</html>
