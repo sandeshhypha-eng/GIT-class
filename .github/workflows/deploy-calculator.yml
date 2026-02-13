@@ -1,163 +1,193 @@
+# Workflow name shown in GitHub Actions UI
 name: Build and Deploy Calculator to Amazon Linux
 
+# When should this pipeline run?
 on:
-  push:
-    branches:
-      - main
-      - develop
-    paths:
-      - 'CalculatorProject/**'
-      - '.github/workflows/deploy-calculator.yml'
-  pull_request:
-    branches:
-      - main
-  workflow_dispatch:
+  workflow_dispatch:     # Allows manual trigger from GitHub UI
 
 jobs:
+
+# =====================================================
+# 1️⃣ BUILD JOB
+# =====================================================
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest   # GitHub provides an Ubuntu VM
 
     steps:
-      - name: Checkout repository
+      # Step 1: Download repository code to runner
+      - name: Checkout source code
         uses: actions/checkout@v4
 
+      # Step 2: Install Java 21 on the GitHub runner
       - name: Set up JDK 21
         uses: actions/setup-java@v4
         with:
-          java-version: '21'
-          distribution: 'temurin'
-          cache: maven
+          distribution: temurin       # Java distribution
+          java-version: '21'          # Required Java version
+          cache: maven                # Cache Maven dependencies (faster builds)
 
+      # Step 3: Compile and package the application
       - name: Build with Maven
         run: |
-          cd CalculatorProject
-          mvn clean package -DskipTests
+          cd CalculatorProject        # Move into project directory
+          mvn clean package           # Clean old builds and create JAR
 
-      - name: Run tests
-        run: |
-          cd CalculatorProject
-          mvn test
-
+      # Step 4: Save the built JAR so other jobs can use it
       - name: Upload JAR artifact
         uses: actions/upload-artifact@v4
         with:
-          name: calculator-jar
+          name: calculator-jar        # Artifact name
           path: CalculatorProject/target/CalculatorProject-*.jar
-          if-no-files-found: error
 
-  deploy-to-amazon-linux:
-    needs: build
+
+# =====================================================
+# 2️⃣ SERVER PREPARATION JOB
+# =====================================================
+  server-preparation:
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    needs: build        # This job runs only after build succeeds
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      # Create SSH configuration to connect to EC2
+      - name: Setup SSH key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.EC2_SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa      # Secure the key (required by SSH)
 
-      - name: Download JAR artifact
+      # Install Java on EC2 if not installed
+      - name: Install Java on EC2
+        run: |
+          ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=accept-new \
+          ec2-user@${{ secrets.EC2_HOST }} << 'EOF'
+
+          # Check if Java exists
+          if ! command -v java &> /dev/null; then
+            echo "Java not found. Installing..."
+            sudo yum install -y java-21-amazon-corretto
+          fi
+
+          java -version   # Print installed version
+          mkdir -p ~/calculator-app   # Create app directory
+
+          EOF
+
+
+# =====================================================
+# 3️⃣ DEPLOY JOB (Run as Background Daemon using systemd)
+# =====================================================
+  deploy:
+    runs-on: ubuntu-latest
+    needs: server-preparation   # Runs only after server is ready
+
+    steps:
+      # Download JAR from build job
+      - name: Download artifact
         uses: actions/download-artifact@v4
         with:
           name: calculator-jar
 
+      # Setup SSH again (each job runs in fresh VM)
       - name: Setup SSH key
         run: |
           mkdir -p ~/.ssh
           echo "${{ secrets.EC2_SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
-          ssh-keyscan -H "${{ secrets.EC2_HOST }}" >> ~/.ssh/known_hosts 2>/dev/null || true
 
-      - name: Create app directory on EC2
-        run: |
-          ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=accept-new \
-            ec2-user@${{ secrets.EC2_HOST }} \
-            "mkdir -p ~/calculator-app && chmod 755 ~/calculator-app"
-
+      # Copy JAR file to EC2
       - name: Copy JAR to EC2
         run: |
           scp -i ~/.ssh/id_rsa -o StrictHostKeyChecking=accept-new \
-            CalculatorProject-*.jar ec2-user@${{ secrets.EC2_HOST }}:~/calculator-app/
+          CalculatorProject-*.jar \
+          ec2-user@${{ secrets.EC2_HOST }}:~/calculator-app/app.jar
 
-      - name: Deploy and start application
+      # Create systemd service to run app as daemon
+      - name: Configure and Start systemd Service
         run: |
           ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=accept-new \
-            ec2-user@${{ secrets.EC2_HOST }} << 'EOF'
-          
-          set -e
-          
-          APP_DIR="$HOME/calculator-app"
-          APP_PORT=8080
-          APP_PID_FILE="$APP_DIR/app.pid"
-          JAR_FILE=$(ls $APP_DIR/CalculatorProject-*.jar | tail -1)
-          
-          echo "Deploying application..."
-          echo "JAR file: $JAR_FILE"
-          
-          # Stop existing application if running
-          if [ -f "$APP_PID_FILE" ]; then
-            PID=$(cat "$APP_PID_FILE")
-            if kill -0 $PID 2>/dev/null; then
-              echo "Stopping existing application (PID: $PID)..."
-              kill $PID || true
-              sleep 2
-            fi
-          fi
-          
-          # Start the application in the background
-          echo "Starting Calculator application on port $APP_PORT..."
-          nohup java -Xmx512m -jar "$JAR_FILE" \
-            --server.port=$APP_PORT \
-            > $APP_DIR/app.log 2>&1 &
-          
-          APP_PID=$!
-          echo $APP_PID > "$APP_PID_FILE"
-          
-          echo "Application started with PID: $APP_PID"
-          sleep 3
-          
-          # Check if process is still running
-          if ! kill -0 $APP_PID 2>/dev/null; then
-            echo "✗ Application failed to start"
-            tail -20 $APP_DIR/app.log
-            exit 1
-          fi
-          
-          echo "✓ Application started successfully"
-          echo "View logs: tail -f $APP_DIR/app.log"
-          
+          ec2-user@${{ secrets.EC2_HOST }} << 'EOF'
+
+          APP_DIR="/home/ec2-user/calculator-app"
+          JAR_PATH="$APP_DIR/app.jar"
+
+          # Create systemd service file
+          sudo tee /etc/systemd/system/calculator.service > /dev/null <<EOL
+          [Unit]
+          Description=Calculator Spring Boot Application
+          After=network.target   # Start after network is ready
+
+          [Service]
+          Type=simple
+          User=ec2-user
+          WorkingDirectory=$APP_DIR
+          ExecStart=/usr/bin/java -Xmx512m -jar $JAR_PATH --server.port=8080
+          SuccessExitStatus=143
+          Restart=always         # Auto restart if app crashes
+          RestartSec=5           # Wait 5 sec before restart
+
+          [Install]
+          WantedBy=multi-user.target   # Start on system boot
+          EOL
+
+          # Reload systemd to recognize new service
+          sudo systemctl daemon-reload
+
+          # Enable service to start on reboot
+          sudo systemctl enable calculator
+
+          # Start (or restart) service
+          sudo systemctl restart calculator
+
+          # Show service status
+          sudo systemctl status calculator --no-pager
+
           EOF
 
-      - name: Verify deployment
-        run: |
-          echo "Verifying application health..."
-          max_attempts=30
-          for i in $(seq 1 $max_attempts); do
-            if curl -f http://${{ secrets.EC2_HOST }}:8080 2>/dev/null; then
-              echo "✓ Application is responding on http://${{ secrets.EC2_HOST }}:8080"
-              exit 0
-            fi
-            echo "Attempt $i/$max_attempts - waiting for application..."
-            sleep 2
-          done
-          
-          echo "✗ Application health check failed after $max_attempts attempts"
-          echo "Checking application logs..."
-          ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=accept-new \
-            ec2-user@${{ secrets.EC2_HOST }} \
-            "tail -30 ~/calculator-app/app.log" || true
-          
-          exit 1
 
-      - name: Deployment success notification
-        if: success()
+# =====================================================
+# 4️⃣ VERIFY DEPLOYMENT
+# =====================================================
+  verify:
+    runs-on: ubuntu-latest
+    needs: deploy   # Run only if deployment succeeded
+
+    steps:
+      - name: Setup SSH key
         run: |
-          echo "================================================"
-          echo "✓ Deployment completed successfully!"
-          echo "================================================"
-          echo ""
-          echo "Application Details:"
-          echo "  URL: http://${{ secrets.EC2_HOST }}:8080"
-          echo "  Host: ${{ secrets.EC2_HOST }}"
-          echo ""
-          echo "To monitor logs on EC2, run:"
-          echo "  ssh -i /path/to/key.pem ec2-user@${{ secrets.EC2_HOST }} 'tail -f ~/calculator-app/app.log'"
-          echo ""
+          mkdir -p ~/.ssh
+          echo "${{ secrets.EC2_SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+
+      - name: Verify Service and Port
+        run: |
+          ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=accept-new \
+          ec2-user@${{ secrets.EC2_HOST }} << 'EOF'
+
+          echo "Checking if service is active..."
+          sudo systemctl is-active calculator || exit 1
+
+          echo "Checking if port 8080 is listening..."
+          (netstat -tulnp 2>/dev/null || ss -tulnp 2>/dev/null) | grep 8080 || exit 1
+
+          echo "Deployment verification successful."
+
+          EOF
+
+
+# =====================================================
+# 5️⃣ NOTIFICATION JOB
+# =====================================================
+  notify:
+    runs-on: ubuntu-latest
+    needs: verify
+    if: success()    # Only run if everything succeeded
+
+    steps:
+      - name: Deployment Success Message
+        run: |
+          echo "======================================="
+          echo "🚀 Deployment Successful!"
+          echo "======================================="
+          echo "Application URL:"
+          echo "http://${{ secrets.EC2_HOST }}:8080"
+          echo "======================================="
