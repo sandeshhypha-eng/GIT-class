@@ -1,4 +1,4 @@
-ename: SSH and Run top Command
+name: SSH and Run top Command
 
 on:
   workflow_dispatch:   # Manual trigger
@@ -21,6 +21,12 @@ jobs:
           chmod 600 ~/.ssh/id_rsa
           ssh-keyscan -H ${{ secrets.server_ip }} >> ~/.ssh/known_hosts
 
-      - name: SSH and Run top
+      - name: Connect to Server
         run: |
-          ssh ${{ secrets.SSH_USER }}@${{ secrets.server_ip }} "top -b -n 1"
+          echo "SSH connection test"
+          ssh ec2-user@${{ secrets.server_ip }} "echo Connected Successfully"
+
+      - name: Run top Command
+        run: |
+          echo "Running top command..."
+          ssh ec2-user@{{ secrets.server_ip }} "top -b -n 1"
