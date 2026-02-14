@@ -1,4 +1,4 @@
-name: SSH and Run top Command
+ename: SSH and Run top Command
 
 on:
   workflow_dispatch:   # Manual trigger
@@ -19,8 +19,8 @@ jobs:
           mkdir -p ~/.ssh
           echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
-          ssh-keyscan -H ${{ secrets.SSH_HOST }} >> ~/.ssh/known_hosts
+          ssh-keyscan -H ${{ secrets.server_ip }} >> ~/.ssh/known_hosts
 
       - name: SSH and Run top
         run: |
-          ssh ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} "top -b -n 1"
+          ssh ${{ secrets.SSH_USER }}@${{ secrets.server_ip }} "top -b -n 1"
