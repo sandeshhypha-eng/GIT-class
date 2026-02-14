@@ -11,8 +11,6 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v4
 
       - name: Setup SSH
         run: |
@@ -24,9 +22,10 @@ jobs:
       - name: Connect to Server
         run: |
           echo "SSH connection test"
-          ssh ec2-user@${{ secrets.server_ip }} "echo Connected Successfully"
+          ssh ec2-user@${{ secrets.server_ip }} 
+          echo "Connected Successfully"
 
       - name: Run top Command
         run: |
           echo "Running top command..."
-          ssh ec2-user@{{ secrets.server_ip }} "top -b -n 1"
+          ssh ec2-user@${{ secrets.server_ip }} "top"
