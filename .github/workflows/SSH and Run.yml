@@ -1,0 +1,49 @@
+name: SSH and Run top Command
+
+on:
+  workflow_dispatch:
+
+jobs:
+  ssh-run:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Install SSH Key
+        run: |
+          mkdir -p ~/.ssh
+          echo "-----BEGIN RSA PRIVATE KEY-----
+MIIEowIBAAKCAQEAnMrMvlGvhKa51By1NbL/Llp5sd0HK4Pvy5UQ4lCMLx5r5BAX
+uLw14IvmrzSuBSFOPnhksDwSgBoE+JqeA4h5SM8MxJhA9r06mDxTeOAaXT33K9un
+hpcFzilvSNNMVCflhp6g1Spi8y4NPvV/h440IGe2NNhfdtMsg0Yg3nN6esKiICmz
+zE3mJtWqnbtwlkM2x5ozbNeAbABAScWVGke/Z/xnFo+iD1SL8KvsJ3lb4Lhz2qdK
+i0TtyEkaYNEy0hJ4pz3YVFVpRVsZ7/WevEbCg4Pg9wYjweIaswNO8VBM9WAFy8n1
+jh1uHSCwPASu6Gi7fLxCiolZiV+ZvLWOTJUk+wIDAQABAoIBAHYEqIxxC/57SNEC
+MtwSucV4ULWyu1zj2LGSqLzRCFPHQErQWiqxcJRuedtTedFeuniHQrLs5LgL3cYL
+C/l41mIZh3DLccrHsL06W1JWzUF2DQC0O6sxLit6QMu+UGvgBAKKkGEjoIuPFGVZ
+gP7V6SKjLiEk5OaaGZ1OQhtvLLgNbx9tEtk3OzxENXKEjaeg3NbbxTyKTpRJsNAe
+6aWyD5DKLrUWU61b9Y+TyeDDsD8afT0C5TaQQkrdhildEWjcKsciDTljpEbD4hMq
+ZLiKM1C6+rlsGix8/iPObxgjTzLTo5IbVu3yBJ9DkC5EINsFTzkjot0V5oRLZkUI
+X5Zv5HECgYEAzpSoJtQ6hFd5afm50h/FqgfyxkBFZz+YV52LUxCLyOclB2S1YFIA
+9kzKTFx9QxARkitXbGBUtuLCAGDQM79lduITgv4pgwo0LCgnMAUkuCmVkvtc6Xaa
+5hBy1gK1iBCQrDxSCSleb1dv5WLta5UkqCD/5rVp6Ib+0zjXzlYqV38CgYEAwk0D
+ObeJxh20XKu3zVV2JaeaPpn/7Ieq8Q9eteLbD/1pji0RUFg0e+mvHK53HWtT1jfx
+BcxAsyODNuaxfRXyicqpdv+1kbZMjHNOz9kr7AzIGiCIm717xbr7vEoQG6mFMxt0
+7cm9b3Ys7dY22eDTSO7NiTy7s1dKKrkOP4HCUIUCgYEAmjyNi2gbRKIW6ZPlNEg6
+iaejkHd+Ggd2U7wxwNPyug4yLGH5ta+kPkC5LehEMeT2aX7op+cIeP+2vxeJe4lk
+VS2YSc4/6jGdIHbeQ1EjyEhr/7Ci/0BpiGoxgy3EoZFUovPqgCKd+l17EvYYs6FI
+HCt/RJ6gM1dPPR8MqWbV+DsCgYBaCJWWCRYuV1VcG7Xvz8oPaLpwh6uvTq5HRXf9
+kEEyB5sB5qA/OqAXSxF5mN5ZI4KVoRZuOVdBqxMCPaPA8oqQjvg3zAW2n2KZMlUy
+us8/cizG7oxenk7cMOi1Nxx/tO2j4PUtum2tWHU5QCnqi+NbyEw1a48Oa0RSx61y
+gA4qgQKBgCdHVEwKx2QRo8RPX9MvFeumymrvldZuC50U/Yqk3NSasv84PkpeByzB
+T4A8Scmq/ODzdwB9Z/fXR4bKhtd05nKXPMkltjQFCf75oDM1IUH71kqHtfIga6/Q
+XzAlJZ1+56LLY9aQF24sblZgqBEsWwnp6i+pbxit5cYuZFeI3C05
+-----END RSA PRIVATE KEY-----" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+
+      - name: Add Host to Known Hosts
+        run: |
+          ssh-keyscan -H YOUR_SERVER_IP >> ~/.ssh/known_hosts
+
+      - name: SSH and Run top
+        run: |
+          ssh ec2-user@3.110.42.217 "top"
