@@ -1,7 +1,7 @@
 name: SSH and Run top Command
 
 on:
-  workflow_dispatch:   # Manual trigger
+  workflow_dispatch:
   push:
     branches:
       - main
@@ -17,15 +17,14 @@ jobs:
           mkdir -p ~/.ssh
           echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
-          ssh-keyscan -H ${{ secrets.server_ip }} >> ~/.ssh/known_hosts
+          ssh-keyscan -H ${{ secrets.SERVER_IP }} >> ~/.ssh/known_hosts
 
-      - name: Connect to Server
+      - name: Test SSH Connection
         run: |
-          echo "SSH connection test"
-          ssh ec2-user@${{ secrets.server_ip }} 
-          echo "Connected Successfully"
+          echo "Testing SSH connection..."
+          ssh -o StrictHostKeyChecking=no ec2-user@${{ secrets.SERVER_IP }} "echo Connected Successfully"
 
       - name: Run top Command
         run: |
           echo "Running top command..."
-          ssh ec2-user@${{ secrets.server_ip }} "top"
+          ssh ec2-user@${{ secrets.SERVER_IP }} "top -b -n 1"
