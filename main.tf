@@ -106,3 +106,8 @@ resource "aws_security_group" "hypha-ssh" {
   }
   tags = { Name = "practice-ssh-sg" }
 }
+abc
+bcd
+def
+ghi
+ijk
