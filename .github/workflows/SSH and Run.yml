@@ -27,4 +27,4 @@ jobs:
       - name: Run top Command
         run: |
           echo "Running top command..."
-          ssh ec2-user@${{ secrets.SERVER_IP }} "top"
+          ssh ec2-user@${{ secrets.SERVER_IP }} "top -b -n 1"
