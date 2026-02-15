@@ -41,4 +41,8 @@ else
        -X POST \
        -d "{\"content\": \"$MSG\"}" \
        $DISCORD_WEBHOOK
-fi
+line1
+line2
+line3
+line4
+
