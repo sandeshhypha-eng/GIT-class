@@ -58,7 +58,7 @@ jobs:
 
           echo "Report saved to top-report.txt"
 
-          # Step 4: Send Email with report
+      # Step 4: Send Email with report
       # -------------------------------
       - name: Send top report via Email
         uses: dawidd6/action-send-mail@v3
