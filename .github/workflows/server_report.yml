@@ -1,0 +1,75 @@
+name: SSH and Run top Command
+
+on:
+  workflow_dispatch:  
+  push:
+    branches:
+      - main
+  schedule:
+    - cron: '0 * * * *'   
+
+jobs:
+  ssh-run:
+    runs-on: ubuntu-latest
+
+    steps:
+
+      # -------------------------------
+      # Step 1: Setup SSH
+      # -------------------------------
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+
+          # Save private key from GitHub Secrets
+          echo "${{ secrets.SSH_KEY }}" > ~/.ssh/id_rsa
+
+          # Set correct permission
+          chmod 600 ~/.ssh/id_rsa
+
+          # Add EC2 server to known hosts
+          ssh-keyscan -H ${{ secrets.server_ipaddress }} >> ~/.ssh/known_hosts
+
+
+      # -------------------------------
+      # Step 2: Test SSH Connection
+      # -------------------------------
+      - name: Test SSH Connection
+        run: |
+          echo "Testing SSH connection..."
+
+          ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no \
+          ec2-user@${{ secrets.server_ipaddress }} \
+          "echo Connected Successfully"
+
+
+      # -------------------------------
+      # Step 3: Run top and save report
+      # -------------------------------
+      - name: Run top and save output
+        run: |
+          echo "Running top command..."
+
+          # Run top and save output to file
+          ssh -i ~/.ssh/id_rsa ec2-user@${{ secrets.server_ipaddress }} \
+          "top -b -n 1" > top-report.txt
+
+          echo "Report saved to top-report.txt"
+
+
+      # -------------------------------
+      # Step 4: Send Email with report
+      # -------------------------------
+      - name: Send top report via Email
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.gmail.com
+          server_port: 465
+          username: ${{ secrets.EMAIL_USERNAME }}
+          password: ${{ secrets.EMAIL_PASSWORD }}
+          subject: "EC2 Top Report"
+          body: "Attached is the latest EC2 top report."
+          to: ${{ secrets.EMAIL_USERNAME }}   # send to yourself
+          from: ${{ secrets.EMAIL_USERNAME }}
+          attachments: top-report.txt
+          secure: true
