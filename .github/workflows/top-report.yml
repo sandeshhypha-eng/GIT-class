@@ -1,7 +1,7 @@
 name: SSH and Run top Command
 
 on:
-  workflow_dispatch:   # Manual trigger
+  # workflow_dispatch:   # Manual trigger
   push:
     branches:
       - main
