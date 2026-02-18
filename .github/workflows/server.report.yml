@@ -60,19 +60,19 @@ jobs:
 
       # Step 4: Send Email with report
       # -------------------------------
-      - name: Send top report via Email
-        uses: dawidd6/action-send-mail@v3
-        with:
-          server_address: smtp.gmail.com
-          server_port: 465
-          username: ${{ secrets.MAIL_UNAME }}
-          password: ${{ secrets.MAIL_PASWD }}
-          subject: "EC2 Server Top Report"
-          body: "Attached is the latest EC2 top report."
-          to: ${{ secrets.MAIL_UNAME }}   
-          from: ${{ secrets.MAIL_UNAME }}
-          attachments: top-report.txt
-          secure: true
+      # - name: Send top report via Email
+      #   uses: dawidd6/action-send-mail@v3
+      #   with:
+      #     server_address: smtp.gmail.com
+      #     server_port: 465
+      #     username: ${{ secrets.MAIL_UNAME }}
+      #     password: ${{ secrets.MAIL_PASWD }}
+      #     subject: "EC2 Server Top Report"
+      #     body: "Attached is the latest EC2 top report."
+      #     to: ${{ secrets.MAIL_UNAME }}   
+      #     from: ${{ secrets.MAIL_UNAME }}
+      #     attachments: top-report.txt
+      #     secure: true
 
 
 
