@@ -38,3 +38,5 @@ def calculator():
 
 if __name__ == "__main__":
     calculator()
+1
+2
