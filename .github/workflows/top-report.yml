@@ -6,7 +6,7 @@ on:
     branches:
       - main
   schedule:
-    - cron: '0 * * * *'   # Runs every hour automatically
+    - cron: '0 9 * * *'   # Runs every hour automatically
 
 jobs:
   ssh-run:
