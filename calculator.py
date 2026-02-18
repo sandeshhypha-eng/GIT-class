@@ -40,3 +40,5 @@ if __name__ == "__main__":
     calculator()
 1
 2
+a=b
+b=c
