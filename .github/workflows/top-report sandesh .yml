@@ -1,0 +1,79 @@
+name: SSH Health Check - sandesh
+
+on:
+  workflow_dispatch:
+    inputs:
+      check_type:
+        description: "Type of check to run (cpu | disk | port)"
+        required: true
+        default: "cpu"
+
+  schedule:
+    - cron: '0 9 * * *'   # Runs daily at 9 AM UTC
+
+jobs:
+  ssh-run:
+    runs-on: ubuntu-latest
+
+    steps:
+
+      # -------------------------------
+      # Step 1: Setup SSH
+      # -------------------------------
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -H ${{ secrets.SERVER_IP }} >> ~/.ssh/known_hosts
+
+
+      # -------------------------------
+      # Step 2: Decide Command
+      # -------------------------------
+      - name: Set Command Variable
+        id: set-command
+        run: |
+          CHECK="${{ github.event.inputs.check_type }}"
+
+          if [ "$CHECK" == "cpu" ]; then
+            echo "COMMAND=top -b -n 1" >> $GITHUB_ENV
+          elif [ "$CHECK" == "disk" ]; then
+            echo "COMMAND=df -h" >> $GITHUB_ENV
+          elif [ "$CHECK" == "port" ]; then
+            echo "COMMAND=netstat -tulnp" >> $GITHUB_ENV
+          else
+            echo "Invalid input. Running CPU check by default."
+            echo "COMMAND=top -b -n 1" >> $GITHUB_ENV
+          fi
+
+
+      # -------------------------------
+      # Step 3: Run Selected Command
+      # -------------------------------
+      - name: Run selected check
+        run: |
+          echo "Running: $COMMAND"
+
+          ssh -i ~/.ssh/id_rsa ec2-user@${{ secrets.SERVER_IP }} \
+          "$COMMAND" > report.txt
+
+          echo "Report saved to report.txt"
+
+
+      # -------------------------------
+      # Step 4: Send Email with report
+      # -------------------------------
+      - name: Send report via Email
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.gmail.com
+          server_port: 465
+          username: ${{ secrets.EMAIL_USERNAME }}
+          password: ${{ secrets.EMAIL_PASSWORD }}
+          subject: "EC2 Health Check Report"
+          body: "Attached is the latest EC2 health check report."
+          to: ${{ secrets.EMAIL_USERNAME }}
+          from: ${{ secrets.EMAIL_USERNAME }}
+          attachments: report.txt
+          secure: true
