@@ -16,7 +16,7 @@ def divide(x, y):
 
 def calculator():
     print("Select operation:")
-    print("1. Add")
+    print("1. Addition")
     print("2. Subtract")
     print("3. Multiply")
     print("4. Divide")
@@ -38,7 +38,6 @@ def calculator():
 
 if __name__ == "__main__":
     calculator()
-1
-2
-a=b
-b=c
+
+
+
