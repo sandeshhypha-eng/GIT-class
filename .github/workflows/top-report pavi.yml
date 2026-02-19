@@ -1,4 +1,4 @@
-name: SSH and Run top Command
+name: SSH and Run top Command - Pavi
 
 on:
   # workflow_dispatch:   # Manual trigger
