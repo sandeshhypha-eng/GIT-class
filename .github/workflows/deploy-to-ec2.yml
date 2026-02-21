@@ -1,14 +1,15 @@
 name: CI/CD — Build and Deploy to EC2
 
 on:
-  push:
-    branches: [ CalculatorApp ]
   workflow_dispatch:
     inputs:
       app:
-        description: 'Which app to deploy: "java" or "python"'
-        required: true
-        default: 'java'
+        description: 'Which app to deploy: "java", "python", or "both"'
+        type: choice
+        options:
+          - java
+          - python
+
 
 jobs:
   build:
