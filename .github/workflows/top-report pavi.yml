@@ -2,11 +2,32 @@ name: SSH and Run top Command - Pavi
 
 on:
   # workflow_dispatch:   # Manual trigger
-  push:
-    branches:
-      - main
+  # push:
+  #   branches:
+  #     - main
+  workflow_dispatch:
+    inputs:
+      check_type:
+        description: "Select Health Check Type"
+        required: true
+        type: choice
+        options:
+          - cpu
+          - memory
+          - disk
+          - port
+          - uptime
+          - load
+          - processes
+          - network
+          - docker
+          - java
+          - logs
+          - service
+          - disk-usage-detail
+          - open-files
   schedule:
-    - cron: '0 9 * * *'   # Runs every hour automatically
+    - cron: '0 9 * * *'   # Runs daily at 9 AM UTC
 
 jobs:
   ssh-run:
@@ -44,17 +65,145 @@ jobs:
 
 
       # -------------------------------
-      # Step 3: Run top and save report
+      # Step 3: Set Variable
       # -------------------------------
-      - name: Run top and save output
+      # - name: Set Command Variable
+      #   id: set-command
+      #   run: |
+
+      #     CHECK="${{ github.event.inputs.check_type }}"
+
+      #     if [ "$CHECK" == "cpu" ]; then
+      #       echo "COMMAND=top -b -n 1" >> $GITHUB_ENV
+
+      #     elif [ "$CHECK" == "memory" ]; then
+      #       echo "COMMAND=free -h" >> $GITHUB_ENV
+
+      #     elif [ "$CHECK" == "disk" ]; then
+      #       echo "COMMAND=df -h" >> $GITHUB_ENV
+
+      #     elif [ "$CHECK" == "port" ]; then
+      #       echo "COMMAND=netstat -tulnp" >> $GITHUB_ENV
+
+      #     elif [ "$CHECK" == "uptime" ]; then
+      #       echo "COMMAND=uptime" >> $GITHUB_ENV
+
+      #     elif [ "$CHECK" == "load" ]; then
+      #       echo "COMMAND=cat /proc/loadavg" >> $GITHUB_ENV
+
+      #     elif [ "$CHECK" == "processes" ]; then
+      #       echo "COMMAND=ps -ef" >> $GITHUB_ENV
+
+      #     elif [ "$CHECK" == "network" ]; then
+      #       echo "COMMAND=ip addr show" >> $GITHUB_ENV
+
+      #     elif [ "$CHECK" == "docker" ]; then
+      #       echo "COMMAND=docker ps -a" >> $GITHUB_ENV
+
+      #     elif [ "$CHECK" == "java" ]; then
+      #       echo "COMMAND=ps -ef | grep java" >> $GITHUB_ENV
+
+      #     elif [ "$CHECK" == "logs" ]; then
+      #       echo "COMMAND=tail -n 50 /home/ec2-user/app.log" >> $GITHUB_ENV
+
+      #     elif [ "$CHECK" == "service" ]; then
+      #       echo "COMMAND=systemctl list-units --type=service --state=running" >> $GITHUB_ENV
+
+      #     elif [ "$CHECK" == "disk-usage-detail" ]; then
+      #       echo "COMMAND=du -h --max-depth=1 /home/ec2-user" >> $GITHUB_ENV
+
+      #     elif [ "$CHECK" == "open-files" ]; then
+      #       echo "COMMAND=lsof" >> $GITHUB_ENV
+
+      #     else
+      #       echo "Invalid input. Defaulting to CPU check."
+      #       echo "COMMAND=top -b -n 1" >> $GITHUB_ENV
+
+      #     fi
+
+      - name: Set Command Variable
+        id: set-command
         run: |
-          echo "Running top command..."
 
-          # Run top and save output to file
+          CHECK="${{ github.event.inputs.check_type }}"
+
+          case "$CHECK" in
+
+            cpu)
+              COMMAND="top -b -n 1"
+              ;;
+
+            memory)
+              COMMAND="free -h"
+              ;;
+
+            disk)
+              COMMAND="df -h"
+              ;;
+
+            port)
+              COMMAND="netstat -tulnp"
+              ;;
+
+            uptime)
+              COMMAND="uptime"
+              ;;
+
+            load)
+              COMMAND="cat /proc/loadavg"
+              ;;
+
+            processes)
+              COMMAND="ps -ef"
+              ;;
+
+            network)
+              COMMAND="ip addr show"
+              ;;
+
+            docker)
+              COMMAND="docker ps -a"
+              ;;
+
+            java)
+              COMMAND="ps -ef | grep java"
+              ;;
+
+            logs)
+              COMMAND="tail -n 50 /home/ec2-user/app.log"
+              ;;
+
+            service)
+              COMMAND="systemctl list-units --type=service --state=running"
+              ;;
+
+            disk-usage-detail)
+              COMMAND="du -h --max-depth=1 /home/ec2-user"
+              ;;
+
+            open-files)
+              COMMAND="lsof"
+              ;;
+
+            *)
+              echo "Invalid option. Defaulting to CPU check."
+              COMMAND="top -b -n 1"
+              ;;
+
+          esac
+
+          echo "COMMAND=$COMMAND" >> $GITHUB_ENV
+      # -------------------------------
+      # Step 3: Run Selected Command
+      # -------------------------------
+      - name: Run selected check
+        run: |
+          echo "Running: $COMMAND"
+
           ssh -i ~/.ssh/id_rsa ec2-user@${{ secrets.SERVER_IP }} \
-          "top -b -n 1" > top-report.txt
+          "$COMMAND" > report.txt
 
-          echo "Report saved to top-report.txt"
+          echo "Report saved to report.txt"
 
 
       # -------------------------------
