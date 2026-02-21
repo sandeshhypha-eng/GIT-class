@@ -210,8 +210,24 @@ jobs:
             sudo yum install -y python3
           fi
 
+          # ensure pip is available for python3
+          if ! python3 -m pip --version >/dev/null 2>&1; then
+            echo "pip not found for python3; attempting to install python3-pip via yum"
+            if sudo yum install -y python3-pip; then
+              echo "Installed python3-pip via yum"
+            else
+              echo "yum install python3-pip failed; trying ensurepip"
+              sudo python3 -m ensurepip --upgrade || true
+              sudo python3 -m pip install --upgrade pip setuptools || true
+              if ! python3 -m pip --version >/dev/null 2>&1; then
+                echo "ensurepip didn't provide pip; falling back to get-pip.py"
+                curl -sS https://bootstrap.pypa.io/get-pip.py | sudo python3 - || true
+              fi
+            fi
+          fi
+
           # install requirements
-          sudo python3 -m pip install -r /opt/calculator-py/requirements.txt
+          sudo python3 -m pip install --no-cache-dir -r /opt/calculator-py/requirements.txt
 
           sudo systemctl daemon-reload
           sudo systemctl enable calculator-py.service
