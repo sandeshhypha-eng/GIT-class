@@ -5,7 +5,8 @@ After=network.target
 [Service]
 User=root
 WorkingDirectory=/opt/calculator
-ExecStart=/usr/bin/java -DLOG_HOME=/var/log/calculator -jar /opt/calculator/CalculatorProject-1.0.jar
+Environment="PATH=/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
+ExecStart=/bin/bash -c 'exec java -DLOG_HOME=/var/log/calculator -jar /opt/calculator/CalculatorProject-1.0.jar'
 StandardOutput=journal
 StandardError=journal
 SyslogIdentifier=calculator

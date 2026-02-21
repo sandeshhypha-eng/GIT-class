@@ -93,13 +93,28 @@ jobs:
 
           # ensure Java is installed (attempt apt/yum)
           if ! command -v java >/dev/null 2>&1; then
+            echo "Java not found, installing..."
             if [ -f /etc/debian_version ]; then
+              echo "Detected Debian-based system"
               sudo apt-get update
               sudo apt-get install -y openjdk-17-jre-headless
             elif [ -f /etc/redhat-release ]; then
-              sudo yum install -y java-17-amazon-corretto || sudo yum install -y java-17-openjdk
+              echo "Detected RedHat-based system"
+              sudo yum install -y java-17-amazon-corretto 2>/dev/null || sudo yum install -y java-17-openjdk
+            else
+              echo "ERROR: Could not detect OS type for Java installation"
+              exit 1
             fi
           fi
+          
+          # Verify Java is now accessible
+          if ! command -v java >/dev/null 2>&1; then
+            echo "ERROR: Java installation failed or java not in PATH"
+            which java || echo "java not found"
+            java -version || echo "java command failed"
+            exit 1
+          fi
+          echo "Java is ready: $(java -version 2>&1 | head -1)"
 
           sudo systemctl daemon-reload
           sudo systemctl enable calculator.service
@@ -108,10 +123,15 @@ jobs:
           sudo systemctl stop calculator.service || true
           sleep 1
           
-          # Verify jar exists before starting
+          # Verify files exist before starting
           if [ ! -f /opt/calculator/CalculatorProject-1.0.jar ]; then
             echo "ERROR: JAR not found at /opt/calculator/CalculatorProject-1.0.jar"
             ls -la /opt/calculator/
+            exit 1
+          fi
+          
+          if [ ! -f /etc/systemd/system/calculator.service ]; then
+            echo "ERROR: systemd unit not found at /etc/systemd/system/calculator.service"
             exit 1
           fi
           
