@@ -2,11 +2,11 @@ name: CI/CD — Build and Deploy to EC2
 
 on:
   push:
-    branches: [ CalculatorApp ]
+    branches: [ main ]
   workflow_dispatch:
 
 jobs:
-  CI:
+  build:
     name: Build
     runs-on: ubuntu-latest
     steps:
@@ -34,9 +34,9 @@ jobs:
           name: calculator-jar
           path: CalculatorProject/target/CalculatorProject-1.0.jar
 
-  CD:
+  deploy:
     name: Deploy to EC2
-    needs: CI
+    needs: build
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -53,9 +53,16 @@ jobs:
           SERVER_IP: ${{ secrets.SERVER_IP }}
         run: |
           mkdir -p ~/.ssh
-          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+          echo -e "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
           ssh-keyscan -H "$SERVER_IP" >> ~/.ssh/known_hosts
+
+      - name: Add SSH key to agent
+        run: |
+          eval $(ssh-agent -s)
+          ssh-add ~/.ssh/id_rsa
+          echo "SSH_AUTH_SOCK=$SSH_AUTH_SOCK" >> $GITHUB_ENV
+          echo "SSH_AGENT_PID=$SSH_AGENT_PID" >> $GITHUB_ENV
 
       - name: Copy files to server
         env:
@@ -116,3 +123,4 @@ jobs:
 # - SSH_PRIVATE_KEY : private key with SSH access to the EC2 host
 # - SERVER_IP       : public IP or hostname of the EC2 instance
 # - SERVER_USER     : ssh user (ec2-user, ubuntu, etc.)
+
