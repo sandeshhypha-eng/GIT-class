@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Calculator</title>
+    <style>
+      :root{
+        --bg1: #f6f7fb;
+        --panel: #ffffff;
+        --muted: #9aa0a6;
+        --accent: #111827;
+        --primary: #2b2fef;
+        --btn-bg: rgba(16,24,40,0.06);
+      }
+      html,body{height:100%;margin:0}
+      body{font-family: Inter, system-ui, -apple-system, 'Segoe UI', Roboto; background: linear-gradient(180deg,#f8fafc 0%, #ffffff 60%); display:flex;align-items:center;justify-content:center}
+
+      .frame{width:360px; height:780px; border-radius:28px; box-shadow: 0 20px 60px rgba(16,24,40,0.12); overflow:hidden; background: linear-gradient(180deg,#ffffff 0%, #f8fafc 100%); display:flex; flex-direction:column}
+
+      /* top display area */
+      .display{flex:1; padding:36px 26px 10px 26px; background: linear-gradient(180deg, rgba(235,240,255,0.6), rgba(255,255,255,0)); display:flex; flex-direction:column; justify-content:flex-end}
+      .value{font-size:64px; font-weight:600; color:var(--accent); text-align:right; margin-bottom:10px}
+      .sub{font-size:14px; color:var(--muted); text-align:right}
+
+      /* bottom panel */
+      .panel{background:var(--panel); border-top-left-radius:20px; border-top-right-radius:20px; padding:18px 18px 28px 18px; box-shadow: inset 0 1px 0 rgba(16,24,40,0.02)}
+
+      .keys{display:grid; grid-template-columns: repeat(3, 1fr) 72px; gap:12px; align-items:center}
+
+      .num{background:var(--btn-bg); border-radius:12px; height:62px; display:flex; align-items:center; justify-content:center; font-size:20px; color:var(--accent); cursor:pointer; box-shadow: 0 6px 18px rgba(11,22,50,0.06)}
+      .num:active{transform:translateY(1px)}
+
+      .op{background:#111827; color:white; border-radius:18px; height:62px; width:62px; display:flex; align-items:center; justify-content:center; font-size:22px; cursor:pointer}
+      .op.secondary{background:#eef2ff; color:var(--accent)}
+
+      .wide{grid-column:1 / span 2}
+      .dot{font-size:26px}
+
+      .small-btn{height:44px; background:transparent; border-radius:10px; color:var(--muted); font-size:14px}
+
+      /* responsive */
+      @media (max-width:420px){.frame{width:320px;height:740px}.value{font-size:56px}}
+    </style>
+  </head>
+
+  <body>
+    <div class="frame" role="application" aria-label="Calculator">
+      <div class="display">
+        <div class="sub" id="sub">&nbsp;</div>
+        <div class="value" id="display">0</div>
+      </div>
+
+      <div class="panel">
+        <div class="keys" id="keys">
+          <!-- numbers -->
+          <div class="num" data-key="1">1</div>
+          <div class="num" data-key="2">2</div>
+          <div class="num" data-key="3">3</div>
+          <div class="num" data-key="4">4</div>
+          <div class="num" data-key="5">5</div>
+          <div class="num" data-key="6">6</div>
+          <div class="num" data-key="7">7</div>
+          <div class="num" data-key="8">8</div>
+          <div class="num" data-key="9">9</div>
+          <div class="num" data-key=".">.</div>
+          <div class="num" data-key="0">0</div>
+          <div class="num" id="bk">⌫</div>
+
+          <!-- operators column -->
+          <div style="display:flex;flex-direction:column;gap:12px;align-items:center;justify-content:flex-start">
+            <div class="op secondary" id="clear">C</div>
+            <div class="op" data-op="add">+</div>
+            <div class="op" data-op="sub">−</div>
+            <div class="op" data-op="mul">×</div>
+            <div class="op" data-op="div">÷</div>
+            <div class="op" id="eq" style="background:#111827;color:#fff; width:62px;">=</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      (function(){
+        const display = document.getElementById('display');
+        const sub = document.getElementById('sub');
+        let first = '';
+        let second = '';
+        let op = '';
+        let enteringSecond = false;
+
+        function render(){
+          display.innerText = (enteringSecond ? (second || '0') : (first || '0'));
+          sub.innerText = first && op ? `${first} ${op}` : '';
+        }
+
+        function appendDigit(target, d){
+          if(d === '.' && target.includes('.')) return target;
+          if(target === '0' && d !== '.') return d;
+          return target + d;
+        }
+
+        document.getElementById('keys').addEventListener('click', async (e) => {
+          const t = e.target.closest('[data-key], [data-op], #bk, #clear, #eq');
+          if(!t) return;
+          if(t.dataset && t.dataset.key){
+            const k = t.dataset.key;
+            if(!enteringSecond){ first = appendDigit(first || '0', k); }
+            else { second = appendDigit(second || '0', k); }
+            render();
+            return;
+          }
+
+          if(t.id === 'bk'){
+            if(enteringSecond){ second = (second || '').slice(0,-1); }
+            else { first = (first || '').slice(0,-1); }
+            render();
+            return;
+          }
+
+          if(t.id === 'clear'){
+            first = ''; second = ''; op = ''; enteringSecond = false; render(); return;
+          }
+
+          if(t.dataset && t.dataset.op){
+            if(!first) return; // need first number
+            op = t.dataset.op; enteringSecond = true; render(); return;
+          }
+
+          if(t.id === 'eq'){
+            if(!first || !op) return;
+            const a = parseFloat(first);
+            const b = parseFloat(second || '0');
+            try{
+              const res = await fetch(`/calc/${op}?a=${encodeURIComponent(a)}&b=${encodeURIComponent(b)}`);
+              if(!res.ok){ const text = await res.text(); throw new Error(text||res.statusText); }
+              const data = await res.json();
+              // show result
+              first = String(data.result);
+              second = '';
+              op = '';
+              enteringSecond = false;
+              render();
+            }catch(err){ alert('Error: '+ err.message); }
+          }
+        });
+
+        // keyboard support (numbers + operators + Enter)
+        window.addEventListener('keydown', (e) => {
+          if(e.key >= '0' && e.key <= '9') document.querySelector(`[data-key="${e.key}"]`).click();
+          if(e.key === '.') document.querySelector(`[data-key='.' ]`).click();
+          if(e.key === 'Backspace') document.getElementById('bk').click();
+          if(e.key === 'Enter') document.getElementById('eq').click();
+          const map = {'+':'add','-':'sub','*':'mul','/':'div'};
+          if(map[e.key]){ document.querySelector(`[data-op="${map[e.key]}"]`)?.click(); }
+        });
+
+        render();
+      })();
+    </script>
+  </body>
+</html>

@@ -1,0 +1,18 @@
+[Unit]
+Description=CalculatorProject Python FastAPI Service
+After=network.target
+
+[Service]
+User=root
+WorkingDirectory=/opt/calculator-py
+Environment="PATH=/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
+ExecStart=/usr/bin/env python3 -m uvicorn app.main:app --host 0.0.0.0 --port 8081
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=calculator-py
+Type=simple
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
