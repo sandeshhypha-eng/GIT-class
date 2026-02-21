@@ -102,18 +102,39 @@ jobs:
           fi
 
           sudo systemctl daemon-reload
-          sudo systemctl enable --now calculator.service
-          sudo systemctl restart calculator.service || true
-          sleep 2
-
-          # Simple smoke test
-          if ! curl -fsS --retry 5 http://localhost:8080/ >/dev/null 2>&1; then
-            echo "Application did not respond; printing journal"
-            sudo journalctl -u calculator.service --no-pager -n 200
+          sudo systemctl enable calculator.service
+          
+          # Stop if running, then start fresh
+          sudo systemctl stop calculator.service || true
+          sleep 1
+          
+          # Verify jar exists before starting
+          if [ ! -f /opt/calculator/CalculatorProject-1.0.jar ]; then
+            echo "ERROR: JAR not found at /opt/calculator/CalculatorProject-1.0.jar"
+            ls -la /opt/calculator/
             exit 1
           fi
+          
+          sudo systemctl start calculator.service
+          sleep 3
 
-          echo "Deployed and running"
+          # Simple smoke test with retries
+          for i in {1..10}; do
+            echo "Smoke test attempt $i..."
+            if curl -fsS --connect-timeout 2 http://localhost:8080/ | grep -q "calculator"; then
+              echo "Application is running"
+              exit 0
+            fi
+            sleep 1
+          done
+          
+          echo "Application did not respond; printing journal and logs"
+          sudo journalctl -u calculator.service --no-pager -n 50
+          if [ -f /var/log/calculator/app.log ]; then
+            echo "=== App log tail ==="
+            tail -30 /var/log/calculator/app.log
+          fi
+          exit 1
           EOF
 
       - name: Notify success
