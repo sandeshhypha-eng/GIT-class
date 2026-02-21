@@ -4,6 +4,7 @@ from fastapi.staticfiles import StaticFiles
 import logging
 from logging.handlers import RotatingFileHandler
 import os
+from pathlib import Path
 
 LOG_HOME = os.getenv("LOG_HOME", os.path.join(os.getcwd(), "logs"))
 os.makedirs(LOG_HOME, exist_ok=True)
@@ -19,7 +20,12 @@ ch.setFormatter(fmt)
 logger.addHandler(ch)
 
 app = FastAPI()
-app.mount("/", StaticFiles(directory="app/static", html=True), name="static")
+# Resolve static directory relative to this file so the app works regardless of CWD
+BASE_DIR = Path(__file__).resolve().parent
+STATIC_DIR = BASE_DIR / "static"
+if not STATIC_DIR.exists():
+    logger.error(f"Static directory not found: {STATIC_DIR}")
+app.mount("/", StaticFiles(directory=str(STATIC_DIR), html=True), name="static")
 
 
 @app.middleware("http")
@@ -66,6 +72,9 @@ async def health():
 
 @app.get("/index.html", response_class=HTMLResponse)
 async def index():
-    path = os.path.join(os.getcwd(), "app", "static", "index.html")
+    path = STATIC_DIR / "index.html"
+    if not path.exists():
+        logger.error(f"index.html not found at: {path}")
+        raise HTTPException(status_code=404, detail="index.html not found")
     with open(path, "r") as f:
         return HTMLResponse(content=f.read())
