@@ -91,26 +91,16 @@ jobs:
           sudo chown -R root:root /opt/calculator
           sudo chown -R root:root /var/log/calculator
 
-          # ensure Java is installed (attempt apt/yum)
+          # ensure Java is installed (Amazon Linux: use amazon-corretto)
           if ! command -v java >/dev/null 2>&1; then
-            echo "Java not found, installing..."
-            if [ -f /etc/debian_version ]; then
-              echo "Detected Debian-based system"
-              sudo apt-get update
-              sudo apt-get install -y openjdk-17-jre-headless
-            elif [ -f /etc/redhat-release ]; then
-              echo "Detected RedHat-based system"
-              sudo yum install -y java-17-amazon-corretto 2>/dev/null || sudo yum install -y java-17-openjdk
-            else
-              echo "ERROR: Could not detect OS type for Java installation"
-              exit 1
-            fi
+            echo "Java not found, installing on Amazon Linux..."
+            sudo yum update -y
+            sudo yum install -y java-17-amazon-corretto-headless
           fi
           
           # Verify Java is now accessible
           if ! command -v java >/dev/null 2>&1; then
             echo "ERROR: Java installation failed or java not in PATH"
-            which java || echo "java not found"
             java -version || echo "java command failed"
             exit 1
           fi
