@@ -88,15 +88,18 @@
             return;
         }
 
-        try {
-            let res = await fetch(`http://localhost:8080/calc/${op}?a=${a}&b=${b}`);
-            if (!res.ok) throw new Error("API error");
+            try {
+                let res = await fetch(`/calc/${op}?a=${a}&b=${b}`);
+                if (!res.ok) {
+                    let txt = await res.text();
+                    throw new Error(txt || res.statusText);
+                }
 
-            let result = await res.text();
-            document.getElementById("result").innerText = "Result: " + result;
-        } catch (err) {
-            document.getElementById("result").innerText = "Error: " + err.message;
-        }
+                let data = await res.json();
+                document.getElementById("result").innerText = "Result: " + data.result;
+            } catch (err) {
+                document.getElementById("result").innerText = "Error: " + err.message;
+            }
     }
 </script>
 

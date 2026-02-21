@@ -1,0 +1,118 @@
+name: CI/CD — Build and Deploy to EC2
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Cache Maven local repository
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2/repository
+          key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
+
+      - name: Build jar
+        run: mvn -B -f CalculatorProject/pom.xml clean package -DskipTests
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: calculator-jar
+          path: CalculatorProject/target/CalculatorProject-1.0.jar
+
+  deploy:
+    name: Deploy to EC2
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: calculator-jar
+          path: ./artifact
+
+      - name: Prepare SSH
+        env:
+          SERVER_IP: ${{ secrets.SERVER_IP }}
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -H "$SERVER_IP" >> ~/.ssh/known_hosts
+
+      - name: Copy files to server
+        env:
+          SERVER_IP: ${{ secrets.SERVER_IP }}
+          SERVER_USER: ${{ secrets.SERVER_USER }}
+        run: |
+          scp -i ~/.ssh/id_rsa CalculatorProject/systemd/calculator.service "$SERVER_USER"@"$SERVER_IP":/tmp/calculator.service
+          scp -i ~/.ssh/id_rsa artifact/CalculatorProject-1.0.jar "$SERVER_USER"@"$SERVER_IP":/tmp/CalculatorProject-1.0.jar
+
+      - name: Install, deploy and restart service on EC2
+        env:
+          SERVER_IP: ${{ secrets.SERVER_IP }}
+          SERVER_USER: ${{ secrets.SERVER_USER }}
+        run: |
+          ssh -i ~/.ssh/id_rsa "$SERVER_USER"@"$SERVER_IP" bash -s << 'EOF'
+          set -euo pipefail
+
+          # prepare dirs
+          sudo mkdir -p /opt/calculator /var/log/calculator
+
+          # move files into place
+          sudo mv /tmp/CalculatorProject-1.0.jar /opt/calculator/CalculatorProject-1.0.jar
+          sudo mv /tmp/calculator.service /etc/systemd/system/calculator.service
+
+          # ensure permissions
+          sudo chown -R root:root /opt/calculator
+          sudo chown -R root:root /var/log/calculator
+
+          # ensure Java is installed (attempt apt/yum)
+          if ! command -v java >/dev/null 2>&1; then
+            if [ -f /etc/debian_version ]; then
+              sudo apt-get update
+              sudo apt-get install -y openjdk-17-jre-headless
+            elif [ -f /etc/redhat-release ]; then
+              sudo yum install -y java-17-amazon-corretto || sudo yum install -y java-17-openjdk
+            fi
+          fi
+
+          sudo systemctl daemon-reload
+          sudo systemctl enable --now calculator.service
+          sudo systemctl restart calculator.service || true
+          sleep 2
+
+          # Simple smoke test
+          if ! curl -fsS --retry 5 http://localhost:8080/ >/dev/null 2>&1; then
+            echo "Application did not respond; printing journal"
+            sudo journalctl -u calculator.service --no-pager -n 200
+            exit 1
+          fi
+
+          echo "Deployed and running"
+          EOF
+
+      - name: Notify success
+        run: echo "Deployment to ${{ secrets.SERVER_IP }} completed"
+
+# Secrets required in repository settings:
+# - SSH_PRIVATE_KEY : private key with SSH access to the EC2 host
+# - SERVER_IP       : public IP or hostname of the EC2 instance
+# - SERVER_USER     : ssh user (ec2-user, ubuntu, etc.)

@@ -1,0 +1,14 @@
+[Unit]
+Description=CalculatorProject Spring Boot Service
+After=network.target
+
+[Service]
+User=www-data
+WorkingDirectory=/opt/calculator
+ExecStart=/usr/bin/java -DLOG_HOME=/var/log/calculator -jar /opt/calculator/CalculatorProject-1.0.jar
+SuccessExitStatus=143
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
