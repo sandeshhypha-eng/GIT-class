@@ -71,16 +71,16 @@
         <div class="keys" id="keys">
           <div>
             <div class="dial" id="dial">
-              <button class="dial-btn" data-key="1">1</button>
-              <button class="dial-btn" data-key="2">2</button>
-              <button class="dial-btn" data-key="3">3</button>
-              <button class="dial-btn" data-key="4">4</button>
-              <button class="dial-btn" data-key="5">5</button>
-              <button class="dial-btn" data-key="6">6</button>
-              <button class="dial-btn" data-key="7">7</button>
-              <button class="dial-btn" data-key="8">8</button>
-              <button class="dial-btn" data-key="9">9</button>
-              <button class="dial-btn" data-key="0">0</button>
+              <button type="button" class="dial-btn" data-key="1">1</button>
+              <button type="button" class="dial-btn" data-key="2">2</button>
+              <button type="button" class="dial-btn" data-key="3">3</button>
+              <button type="button" class="dial-btn" data-key="4">4</button>
+              <button type="button" class="dial-btn" data-key="5">5</button>
+              <button type="button" class="dial-btn" data-key="6">6</button>
+              <button type="button" class="dial-btn" data-key="7">7</button>
+              <button type="button" class="dial-btn" data-key="8">8</button>
+              <button type="button" class="dial-btn" data-key="9">9</button>
+              <button type="button" class="dial-btn" data-key="0">0</button>
             </div>
 
             <div style="display:flex;gap:12px;align-items:center;justify-content:center;margin-top:14px">
@@ -111,9 +111,11 @@
         let op = '';
         let enteringSecond = false;
 
+        const OP_SYMBOL = { add: '+', sub: '−', mul: '×', div: '÷' };
+
         function render(){
           display.innerText = (enteringSecond ? (second || '0') : (first || '0'));
-          sub.innerText = first && op ? `${first} ${op}` : '';
+          sub.innerText = first && op ? `${first} ${OP_SYMBOL[op] || op}` : '';
         }
 
         function appendDigit(target, d){
@@ -125,6 +127,7 @@
         document.getElementById('keys').addEventListener('click', async (e) => {
           const t = e.target.closest('[data-key], [data-op], #bk, #clear, #eq');
           if(!t) return;
+          e.preventDefault();
           if(t.dataset && t.dataset.key){
             const k = t.dataset.key;
             if(!enteringSecond){ first = appendDigit(first || '0', k); }
@@ -150,11 +153,13 @@
           }
 
           if(t.id === 'eq'){
-            if(!first || !op) return;
+            if(!first || !op) { alert('Please choose an operation'); return; }
             const a = parseFloat(first);
             const b = parseFloat(second || '0');
+            const url = `/calc/${encodeURIComponent(op)}?a=${encodeURIComponent(a)}&b=${encodeURIComponent(b)}`;
             try{
-              const res = await fetch(`/calc/${op}?a=${encodeURIComponent(a)}&b=${encodeURIComponent(b)}`);
+              console.log('fetch', url);
+              const res = await fetch(url);
               if(!res.ok){ const text = await res.text(); throw new Error(text||res.statusText); }
               const data = await res.json();
               // show result
@@ -163,7 +168,7 @@
               op = '';
               enteringSecond = false;
               render();
-            }catch(err){ alert('Error: '+ err.message); }
+            }catch(err){ alert('Error: '+ err.message); console.error('calc error', err); }
           }
         });
 
