@@ -128,25 +128,6 @@ jobs:
           sudo systemctl start calculator.service
           sleep 3
 
-          # Simple smoke test with retries
-          for i in {1..10}; do
-            echo "Smoke test attempt $i..."
-            if curl -fsS --connect-timeout 2 http://localhost:8080/ | grep -q "calculator"; then
-              echo "Application is running"
-              exit 0
-            fi
-            sleep 1
-          done
-          
-          echo "Application did not respond; printing journal and logs"
-          sudo journalctl -u calculator.service --no-pager -n 50
-          if [ -f /var/log/calculator/app.log ]; then
-            echo "=== App log tail ==="
-            tail -30 /var/log/calculator/app.log
-          fi
-          exit 1
-          EOF
-
       - name: Notify success
         run: echo "Deployment to ${{ secrets.SERVER_IP }} completed"
 

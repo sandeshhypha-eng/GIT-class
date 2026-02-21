@@ -47,3 +47,11 @@ public class RequestLoggingFilter extends OncePerRequestFilter {
         return request.getRemoteAddr();
     }
 }
+/* 
+AWS_ACCESS_KEY_ID=AKIAIOSFODNN7EXAMPLE
+ AWS_SECRET_ACCESS_KEY=wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
+
+GITHUB_TOKEN=ghp_1234567890abcdefghijklmnopqrstuvwxyz
+
+DB_PASSWORD=SuperSecretPassword123!
+*/
