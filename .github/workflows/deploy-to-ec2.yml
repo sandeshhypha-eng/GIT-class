@@ -2,7 +2,7 @@ name: CI/CD — Build and Deploy to EC2
 
 on:
   push:
-    branches: [ main ]
+    branches: [ CalculatorApp ]
   workflow_dispatch:
 
 jobs:
