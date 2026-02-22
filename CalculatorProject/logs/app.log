@@ -1,0 +1,32 @@
+2026-02-21 20:52:16 INFO  c.c.CalculatorProjectApplication - Starting CalculatorProjectApplication using Java 24.0.1 with PID 18145 (/Volumes/Pavi/Git/GIT-class/GIT-class/CalculatorProject/target/classes started by pavi in /Volumes/Pavi/Git/GIT-class/GIT-class/CalculatorProject)
+2026-02-21 20:52:16 INFO  c.c.CalculatorProjectApplication - No active profile set, falling back to 1 default profile: "default"
+2026-02-21 20:52:16 INFO  o.s.b.w.e.tomcat.TomcatWebServer - Tomcat initialized with port(s): 8080 (http)
+2026-02-21 20:52:16 INFO  o.a.coyote.http11.Http11NioProtocol - Initializing ProtocolHandler ["http-nio-8080"]
+2026-02-21 20:52:16 INFO  o.a.catalina.core.StandardService - Starting service [Tomcat]
+2026-02-21 20:52:16 INFO  o.a.catalina.core.StandardEngine - Starting Servlet engine: [Apache Tomcat/10.1.15]
+2026-02-21 20:52:16 INFO  o.a.c.c.C.[Tomcat].[localhost].[/] - Initializing Spring embedded WebApplicationContext
+2026-02-21 20:52:16 INFO  o.s.b.w.s.c.ServletWebServerApplicationContext - Root WebApplicationContext: initialization completed in 285 ms
+2026-02-21 20:52:16 INFO  o.s.b.a.w.s.WelcomePageHandlerMapping - Adding welcome page: class path resource [static/index.html]
+2026-02-21 20:52:16 INFO  o.a.coyote.http11.Http11NioProtocol - Starting ProtocolHandler ["http-nio-8080"]
+2026-02-21 20:52:16 INFO  o.s.b.w.e.tomcat.TomcatWebServer - Tomcat started on port(s): 8080 (http) with context path ''
+2026-02-21 20:52:16 INFO  c.c.CalculatorProjectApplication - Started CalculatorProjectApplication in 0.57 seconds (process running for 0.669)
+2026-02-21 20:52:16 INFO  c.c.CalculatorProjectApplication - CalculatorProject started successfully
+2026-02-21 20:52:32 INFO  o.a.c.c.C.[Tomcat].[localhost].[/] - Initializing Spring DispatcherServlet 'dispatcherServlet'
+2026-02-21 20:52:32 INFO  o.s.web.servlet.DispatcherServlet - Initializing Servlet 'dispatcherServlet'
+2026-02-21 20:52:32 INFO  o.s.web.servlet.DispatcherServlet - Completed initialization in 0 ms
+2026-02-21 21:01:00 INFO  c.c.CalculatorProjectApplication - Starting CalculatorProjectApplication using Java 24.0.1 with PID 19935 (/Volumes/Pavi/Git/GIT-class/GIT-class/CalculatorProject/target/classes started by pavi in /Volumes/Pavi/Git/GIT-class/GIT-class/CalculatorProject)
+2026-02-21 21:01:00 INFO  c.c.CalculatorProjectApplication - No active profile set, falling back to 1 default profile: "default"
+2026-02-21 21:01:00 INFO  o.s.b.w.e.tomcat.TomcatWebServer - Tomcat initialized with port(s): 8080 (http)
+2026-02-21 21:01:00 INFO  o.a.coyote.http11.Http11NioProtocol - Initializing ProtocolHandler ["http-nio-8080"]
+2026-02-21 21:01:00 INFO  o.a.catalina.core.StandardService - Starting service [Tomcat]
+2026-02-21 21:01:00 INFO  o.a.catalina.core.StandardEngine - Starting Servlet engine: [Apache Tomcat/10.1.15]
+2026-02-21 21:01:00 INFO  o.a.c.c.C.[Tomcat].[localhost].[/] - Initializing Spring embedded WebApplicationContext
+2026-02-21 21:01:00 INFO  o.s.b.w.s.c.ServletWebServerApplicationContext - Root WebApplicationContext: initialization completed in 237 ms
+2026-02-21 21:01:00 INFO  o.s.b.a.w.s.WelcomePageHandlerMapping - Adding welcome page: class path resource [static/index.html]
+2026-02-21 21:01:00 INFO  o.a.coyote.http11.Http11NioProtocol - Starting ProtocolHandler ["http-nio-8080"]
+2026-02-21 21:01:00 INFO  o.s.b.w.e.tomcat.TomcatWebServer - Tomcat started on port(s): 8080 (http) with context path ''
+2026-02-21 21:01:00 INFO  c.c.CalculatorProjectApplication - Started CalculatorProjectApplication in 0.48 seconds (process running for 0.566)
+2026-02-21 21:01:00 INFO  c.c.CalculatorProjectApplication - CalculatorProject started successfully
+2026-02-21 21:01:08 INFO  o.a.c.c.C.[Tomcat].[localhost].[/] - Initializing Spring DispatcherServlet 'dispatcherServlet'
+2026-02-21 21:01:08 INFO  o.s.web.servlet.DispatcherServlet - Initializing Servlet 'dispatcherServlet'
+2026-02-21 21:01:08 INFO  o.s.web.servlet.DispatcherServlet - Completed initialization in 0 ms

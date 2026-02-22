@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Login - Calculator App</title>
+    <style>
+        /* Body */
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: linear-gradient(135deg, #74b9ff, #a29bfe);
+        }
+
+        /* Login box */
+        .login-box {
+            background: #fff;
+            padding: 40px 30px;
+            border-radius: 15px;
+            box-shadow: 0 15px 30px rgba(0,0,0,0.2);
+            width: 320px;
+            text-align: center;
+        }
+
+        /* Title */
+        .login-box h2 {
+            margin-bottom: 30px;
+            color: #2d3436;
+        }
+
+        /* Inputs */
+        .login-box input {
+            width: 90%;
+            padding: 12px;
+            margin: 10px 0;
+            border-radius: 8px;
+            border: 1px solid #dfe6e9;
+            font-size: 16px;
+        }
+
+        /* Button */
+        .login-box button {
+            width: 95%;
+            padding: 12px;
+            border: none;
+            border-radius: 8px;
+            background: linear-gradient(135deg, #0984e3, #6c5ce7);
+            color: white;
+            font-size: 18px;
+            cursor: pointer;
+            margin-top: 15px;
+            transition: all 0.3s ease;
+        }
+
+        .login-box button:hover {
+            background: linear-gradient(135deg, #74b9ff, #a29bfe);
+        }
+
+        /* Message */
+        #message {
+            margin-top: 15px;
+            color: #e84118;
+            font-weight: bold;
+        }
+
+        /* Responsive */
+        @media (max-width: 400px) {
+            .login-box {
+                width: 90%;
+                padding: 30px 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<div class="login-box">
+    <h2>Login</h2>
+    <input type="text" id="username" placeholder="Username"><br>
+    <input type="password" id="password" placeholder="Password"><br>
+    <button onclick="login()">Login</button>
+    <p id="message"></p>
+</div>
+
+<script>
+async function login() {
+    let username = document.getElementById("username").value;
+    let password = document.getElementById("password").value;
+
+    if (!username || !password) {
+        document.getElementById("message").innerText = "Please enter both username and password!";
+        return;
+    }
+
+    try {
+        let res = await fetch("http://localhost:8080/login", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ username, password })
+        });
+
+        let result = await res.text();
+
+        if(result === "SUCCESS") {
+            window.location.href = "index.html";
+        } else {
+            document.getElementById("message").innerText = "Invalid username or password!";
+        }
+
+    } catch (err) {
+        document.getElementById("message").innerText = "Server error!";
+    }
+}
+</script>
+
+</body>
+</html>
