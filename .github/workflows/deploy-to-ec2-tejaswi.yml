@@ -1,0 +1,256 @@
+name: CI/CD — Build and Deploy to EC2
+
+on:
+  workflow_dispatch:
+    inputs:
+      app:
+        description: 'Which app to deploy: "java", "python", or "both"'
+        type: choice
+        options:
+          - java
+          - python
+
+
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate chosen app
+        env:
+          APP: ${{ github.event.inputs.app }}
+        run: |
+          case "${APP}" in
+            java|python|both)
+              echo "Deploying app='${APP}'" ;;
+            *)
+              echo "ERROR: Invalid app '${APP}'. Choose 'java', 'python' or 'both' via the workflow input." ; exit 1 ;;
+          esac
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Cache Maven local repository
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2/repository
+          key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
+
+      - name: Build Java jar
+        if: ${{ github.event.inputs.app == 'java' || github.event.inputs.app == 'both' }}
+        run: mvn -B -f CalculatorProject/pom.xml clean package -DskipTests
+
+      - name: Upload Java artifact
+        if: ${{ github.event.inputs.app == 'java' || github.event.inputs.app == 'both' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: calculator-jar
+          path: CalculatorProject/target/CalculatorProject-1.0.jar
+
+      - name: Package Python app
+        if: ${{ github.event.inputs.app == 'python' || github.event.inputs.app == 'both' }}
+        run: |
+          tar -czf calculator-py.tgz -C CalculatorProjectPy .
+
+      - name: Upload Python package
+        if: ${{ github.event.inputs.app == 'python' || github.event.inputs.app == 'both' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: calculator-py
+          path: calculator-py.tgz
+
+  deploy:
+    name: Deploy to EC2
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download Java artifact
+        if: ${{ github.event.inputs.app == 'java' }}
+        uses: actions/download-artifact@v4
+        with:
+          name: calculator-jar
+          path: ./artifact
+
+      - name: Download Python package
+        if: ${{ github.event.inputs.app == 'python' }}
+        uses: actions/download-artifact@v4
+        with:
+          name: calculator-py
+          path: ./artifact-py
+
+      - name: Prepare SSH
+        env:
+          SERVER_IP: ${{ secrets.SERVER_IP }}
+        run: |
+          mkdir -p ~/.ssh
+          echo -e "${{ secrets. }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -H "$SERVER_IP" >> ~/.ssh/known_hosts
+
+      - name: Add SSH key to agent
+        run: |
+          eval $(ssh-agent -s)
+          ssh-add ~/.ssh/id_rsa
+          echo "SSH_AUTH_SOCK=$SSH_AUTH_SOCK" >> $GITHUB_ENV
+          echo "SSH_AGENT_PID=$SSH_AGENT_PID" >> $GITHUB_ENV
+
+      - name: Copy Java files to server
+        if: ${{ github.event.inputs.app == 'java' }}
+        env:
+          SERVER_IP: ${{ secrets.SERVER_IP }}
+          SERVER_USER: ${{ secrets.SERVER_USER }}
+        run: |
+          scp -i ~/.ssh/id_rsa CalculatorProject/systemd/calculator.service "$SERVER_USER"@"$SERVER_IP":/tmp/calculator.service
+          scp -i ~/.ssh/id_rsa artifact/CalculatorProject-1.0.jar "$SERVER_USER"@"$SERVER_IP":/tmp/CalculatorProject-1.0.jar
+
+      - name: Copy Python package to server
+        if: ${{ github.event.inputs.app == 'python' }}
+        env:
+          SERVER_IP: ${{ secrets.SERVER_IP }}
+          SERVER_USER: ${{ secrets.SERVER_USER }}
+        run: |
+          scp -i ~/.ssh/id_rsa CalculatorProjectPy/systemd/calculator-py.service "$SERVER_USER"@"$SERVER_IP":/tmp/calculator-py.service
+          scp -i ~/.ssh/id_rsa artifact-py/calculator-py.tgz "$SERVER_USER"@"$SERVER_IP":/tmp/calculator-py.tgz
+
+      - name: Install, deploy and restart Java service on EC2
+        if: ${{ github.event.inputs.app == 'java' }}
+        env:
+          SERVER_IP: ${{ secrets.SERVER_IP }}
+          SERVER_USER: ${{ secrets.SERVER_USER }}
+        run: |
+          ssh -i ~/.ssh/id_rsa "$SERVER_USER"@"$SERVER_IP" bash -s << 'EOF'
+          set -euo pipefail
+
+          # prepare dirs
+          sudo mkdir -p /opt/calculator /var/log/calculator
+
+          # move files into place
+          sudo mv /tmp/CalculatorProject-1.0.jar /opt/calculator/CalculatorProject-1.0.jar
+          sudo mv /tmp/calculator.service /etc/systemd/system/calculator.service
+
+          # ensure permissions
+          sudo chown -R root:root /opt/calculator
+          sudo chown -R root:root /var/log/calculator
+
+          # ensure Java is installed (Amazon Linux: use amazon-corretto)
+          if ! command -v java >/dev/null 2>&1; then
+            echo "Java not found, installing on Amazon Linux..."
+            sudo yum update -y
+            sudo yum install -y java-17-amazon-corretto-headless
+          fi
+          
+          # Verify Java is now accessible
+          if ! command -v java >/dev/null 2>&1; then
+            echo "ERROR: Java installation failed or java not in PATH"
+            java -version || echo "java command failed"
+            exit 1
+          fi
+          echo "Java is ready: $(java -version 2>&1 | head -1)"
+
+          sudo systemctl daemon-reload
+          sudo systemctl enable calculator.service
+          
+          # Stop if running, then start fresh
+          sudo systemctl stop calculator.service || true
+          sleep 1
+          
+          # Verify files exist before starting
+          if [ ! -f /opt/calculator/CalculatorProject-1.0.jar ]; then
+            echo "ERROR: JAR not found at /opt/calculator/CalculatorProject-1.0.jar"
+            ls -la /opt/calculator/
+            exit 1
+          fi
+          
+          if [ ! -f /etc/systemd/system/calculator.service ]; then
+            echo "ERROR: systemd unit not found at /etc/systemd/system/calculator.service"
+            exit 1
+          fi
+          
+          sudo systemctl start calculator.service
+          sleep 3
+
+          EOF
+
+      - name: Install, deploy and restart Python service on EC2
+        if: ${{ github.event.inputs.app == 'python' }}
+        env:
+          SERVER_IP: ${{ secrets.SERVER_IP }}
+          SERVER_USER: ${{ secrets.SERVER_USER }}
+        run: |
+          ssh -i ~/.ssh/id_rsa "$SERVER_USER"@"$SERVER_IP" bash -s << 'EOF'
+          set -euo pipefail
+
+          # prepare dirs
+          sudo mkdir -p /opt/calculator-py /var/log/calculator-py
+
+          # unpack python package
+          sudo rm -rf /opt/calculator-py
+          sudo mkdir -p /opt/calculator-py
+          sudo tar -xzf /tmp/calculator-py.tgz -C /opt/calculator-py
+
+          # move systemd unit
+          sudo mv /tmp/calculator-py.service /etc/systemd/system/calculator-py.service
+
+          # ensure permissions
+          sudo chown -R root:root /opt/calculator-py
+          sudo chown -R root:root /var/log/calculator-py
+
+          # ensure python3 and pip
+          if ! command -v python3 >/dev/null 2>&1; then
+            sudo yum update -y
+            sudo yum install -y python3
+          fi
+
+          # ensure pip is available for python3
+          if ! python3 -m pip --version >/dev/null 2>&1; then
+            echo "pip not found for python3; attempting to install python3-pip via yum"
+            if sudo yum install -y python3-pip; then
+              echo "Installed python3-pip via yum"
+            else
+              echo "yum install python3-pip failed; trying ensurepip"
+              sudo python3 -m ensurepip --upgrade || true
+              sudo python3 -m pip install --upgrade pip setuptools || true
+              if ! python3 -m pip --version >/dev/null 2>&1; then
+                echo "ensurepip didn't provide pip; falling back to get-pip.py"
+                curl -sS https://bootstrap.pypa.io/get-pip.py | sudo python3 - || true
+              fi
+            fi
+          fi
+
+          # install requirements
+          sudo python3 -m pip install --no-cache-dir -r /opt/calculator-py/requirements.txt
+
+          sudo systemctl daemon-reload
+          sudo systemctl enable calculator-py.service
+          sudo systemctl stop calculator-py.service || true
+          sleep 1
+          sudo systemctl start calculator-py.service
+          sleep 3
+
+          # smoke test
+          if ! curl -fsS --connect-timeout 2 http://localhost:8081/ >/dev/null 2>&1; then
+            echo "Python app did not respond; printing journal"
+            sudo journalctl -u calculator-py.service --no-pager -n 200
+            exit 1
+          fi
+
+          EOF
+
+      - name: Notify success
+        run: echo "Deployment to ${{ secrets.SERVER_IP }} completed"
+
+# Secrets required in repository settings:
+# - SSH_PRIVATE_KEY : private key with SSH access to the EC2 host
+# - SERVER_IP       : public IP or hostname of the EC2 instance
+# - SERVER_USER     : ssh user (ec2-user, ubuntu, etc.)
+
+#cdvd
