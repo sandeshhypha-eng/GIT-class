@@ -1,14 +1,27 @@
+# workflow name shown in GitHub Actions UI
 name: CI/CD — Build and Deploy to EC2
 
+# events that trigger the workflow
 on:
+  # manual trigger via GitHub UI (dispatch event)
   workflow_dispatch:
+    # inputs provided by the user when dispatching
     inputs:
+      # which application(s) to build/deploy
       app:
         description: 'Which app to deploy: "java", "python", or "both"'
         type: choice
         options:
           - java
           - python
+      # target environment for deployment
+      environment:
+        description: 'Deployment environment: dev, test, or prod'
+        type: choice
+        options:
+          - dev
+          - test
+          - prod
 
 
 jobs:
@@ -28,6 +41,16 @@ jobs:
               echo "Deploying app='${APP}'" ;;
             *)
               echo "ERROR: Invalid app '${APP}'. Choose 'java', 'python' or 'both' via the workflow input." ; exit 1 ;;
+          esac
+      - name: Validate chosen environment
+        env:
+          ENV: ${{ github.event.inputs.environment }}
+        run: |
+          case "${ENV}" in
+            dev|test|prod)
+              echo "Deploying environment='${ENV}'" ;;
+            *)
+              echo "ERROR: Invalid environment '${ENV}'. Choose 'dev', 'test' or 'prod'." ; exit 1 ;;
           esac
 
       - name: Set up JDK 17
@@ -87,12 +110,39 @@ jobs:
           name: calculator-py
           path: ./artifact-py
 
+      - name: Set server credentials
+        run: |
+          case "${{ github.event.inputs.environment }}" in
+            dev)
+              echo "SERVER_IP=${{ secrets.SERVER_IP }}" >> $GITHUB_ENV
+              ;;
+            test)
+              echo "SERVER_IP=${{ secrets.SERVER_IP_TEST }}" >> $GITHUB_ENV
+              ;;
+            prod)
+              echo "SERVER_IP=${{ secrets.SERVER_IP_PROD }}" >> $GITHUB_ENV
+              ;;
+            *)
+              echo "Unknown environment '${{ github.event.inputs.environment }}'" >&2; exit 1;;
+          esac
       - name: Prepare SSH
         env:
-          SERVER_IP: ${{ secrets.SERVER_IP }}
+          SERVER_IP: ${{ env.SERVER_IP }}
         run: |
           mkdir -p ~/.ssh
-          echo -e "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+          case "${{ github.event.inputs.environment }}" in
+            dev)
+              printf '%s\n' "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+              ;;
+            test)
+              printf '%s\n' "${{ secrets.SSH_KEY_PROD }}" > ~/.ssh/id_rsa
+              ;;
+            prod)
+              printf '%s\n' "${{ secrets.SSH_KEY_PROD }}" > ~/.ssh/id_rsa
+              ;;
+            *)
+              echo "Unknown environment '${{ github.event.inputs.environment }}'" >&2; exit 1;;
+          esac
           chmod 600 ~/.ssh/id_rsa
           ssh-keyscan -H "$SERVER_IP" >> ~/.ssh/known_hosts
 
@@ -106,7 +156,7 @@ jobs:
       - name: Copy Java files to server
         if: ${{ github.event.inputs.app == 'java' }}
         env:
-          SERVER_IP: ${{ secrets.SERVER_IP }}
+          SERVER_IP: ${{ env.SERVER_IP }}
           SERVER_USER: ${{ secrets.SERVER_USER }}
         run: |
           scp -i ~/.ssh/id_rsa CalculatorProject/systemd/calculator.service "$SERVER_USER"@"$SERVER_IP":/tmp/calculator.service
@@ -115,7 +165,7 @@ jobs:
       - name: Copy Python package to server
         if: ${{ github.event.inputs.app == 'python' }}
         env:
-          SERVER_IP: ${{ secrets.SERVER_IP }}
+          SERVER_IP: ${{ env.SERVER_IP }}
           SERVER_USER: ${{ secrets.SERVER_USER }}
         run: |
           scp -i ~/.ssh/id_rsa CalculatorProjectPy/systemd/calculator-py.service "$SERVER_USER"@"$SERVER_IP":/tmp/calculator-py.service
@@ -124,7 +174,7 @@ jobs:
       - name: Install, deploy and restart Java service on EC2
         if: ${{ github.event.inputs.app == 'java' }}
         env:
-          SERVER_IP: ${{ secrets.SERVER_IP }}
+          SERVER_IP: ${{ env.SERVER_IP }}
           SERVER_USER: ${{ secrets.SERVER_USER }}
         run: |
           ssh -i ~/.ssh/id_rsa "$SERVER_USER"@"$SERVER_IP" bash -s << 'EOF'
@@ -183,7 +233,7 @@ jobs:
       - name: Install, deploy and restart Python service on EC2
         if: ${{ github.event.inputs.app == 'python' }}
         env:
-          SERVER_IP: ${{ secrets.SERVER_IP }}
+          SERVER_IP: ${{ env.SERVER_IP }}
           SERVER_USER: ${{ secrets.SERVER_USER }}
         run: |
           ssh -i ~/.ssh/id_rsa "$SERVER_USER"@"$SERVER_IP" bash -s << 'EOF'
