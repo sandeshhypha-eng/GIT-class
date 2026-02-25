@@ -114,15 +114,12 @@ jobs:
         run: |
           case "${{ github.event.inputs.environment }}" in
             dev)
-              echo "SSH_KEY=${{ secrets.SSH_PRIVATE_KEY }}" >> $GITHUB_ENV
               echo "SERVER_IP=${{ secrets.SERVER_IP }}" >> $GITHUB_ENV
               ;;
             test)
-              echo "SSH_KEY=${{ secrets.SSH_KEY_PROD }}" >> $GITHUB_ENV
               echo "SERVER_IP=${{ secrets.SERVER_IP_TEST }}" >> $GITHUB_ENV
               ;;
             prod)
-              echo "SSH_KEY=${{ secrets.SSH_KEY_PROD }}" >> $GITHUB_ENV
               echo "SERVER_IP=${{ secrets.SERVER_IP_PROD }}" >> $GITHUB_ENV
               ;;
             *)
@@ -133,7 +130,19 @@ jobs:
           SERVER_IP: ${{ env.SERVER_IP }}
         run: |
           mkdir -p ~/.ssh
-          echo -e "${{ env.SSH_KEY }}" > ~/.ssh/id_rsa
+          case "${{ github.event.inputs.environment }}" in
+            dev)
+              printf '%s\n' "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+              ;;
+            test)
+              printf '%s\n' "${{ secrets.SSH_KEY_PROD }}" > ~/.ssh/id_rsa
+              ;;
+            prod)
+              printf '%s\n' "${{ secrets.SSH_KEY_PROD }}" > ~/.ssh/id_rsa
+              ;;
+            *)
+              echo "Unknown environment '${{ github.event.inputs.environment }}'" >&2; exit 1;;
+          esac
           chmod 600 ~/.ssh/id_rsa
           ssh-keyscan -H "$SERVER_IP" >> ~/.ssh/known_hosts
 
