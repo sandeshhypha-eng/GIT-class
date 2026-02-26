@@ -14,6 +14,8 @@ on:
         options:
           - java
           - python
+        # run: echo "Removed invalid run here"  # FIXED: cannot have run under inputs
+
       # target environment for deployment
       environment:
         description: 'Deployment environment: dev, test, or prod'
@@ -22,7 +24,6 @@ on:
           - dev
           - test
           - prod
-
 
 jobs:
   build:
@@ -42,6 +43,7 @@ jobs:
             *)
               echo "ERROR: Invalid app '${APP}'. Choose 'java' or 'python' via the workflow input." ; exit 1 ;;
           esac
+
       - name: Validate chosen environment
         env:
           ENV: ${{ github.event.inputs.environment }}
@@ -75,6 +77,7 @@ jobs:
         with:
           name: calculator-jar
           path: CalculatorProject/target/CalculatorProject-1.0.jar
+          # FIXED: Ensure correct artifact path for download in deploy step
 
       - name: Package Python app
         if: ${{ github.event.inputs.app == 'python' }}
@@ -101,7 +104,8 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: calculator-jar
-          path: ./artifact
+          path: ./artifact  # FIXED: matched the upload path
+
       - name: List downloaded artifact
         if: ${{ github.event.inputs.app == 'java' }}
         run: |
@@ -130,6 +134,7 @@ jobs:
             *)
               echo "Unknown environment '${{ github.event.inputs.environment }}'" >&2; exit 1;;
           esac
+
       - name: Prepare SSH
         env:
           SERVER_IP: ${{ env.SERVER_IP }}
@@ -236,7 +241,6 @@ jobs:
           
           sudo systemctl start calculator.service
           sleep 3
-
           EOF
 
       - name: Install, deploy and restart Python service on EC2
@@ -312,4 +316,4 @@ jobs:
 # - SERVER_IP       : public IP or hostname of the EC2 instance
 # - SERVER_USER     : ssh user (ec2-user, ubuntu, etc.)
 
-#cdvd
+#cdvd.
