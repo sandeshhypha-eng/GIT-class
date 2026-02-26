@@ -9,7 +9,7 @@ on:
     inputs:
       # which application(s) to build/deploy
       app:
-        description: 'Which app to deploy: "java", "python", or "both"'
+        description: 'Which app to deploy: "java" or "python"'
         type: choice
         options:
           - java
@@ -37,10 +37,10 @@ jobs:
           APP: ${{ github.event.inputs.app }}
         run: |
           case "${APP}" in
-            java|python|both)
+            java|python)
               echo "Deploying app='${APP}'" ;;
             *)
-              echo "ERROR: Invalid app '${APP}'. Choose 'java', 'python' or 'both' via the workflow input." ; exit 1 ;;
+              echo "ERROR: Invalid app '${APP}'. Choose 'java' or 'python' via the workflow input." ; exit 1 ;;
           esac
       - name: Validate chosen environment
         env:
@@ -66,23 +66,23 @@ jobs:
           key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
 
       - name: Build Java jar
-        if: ${{ github.event.inputs.app == 'java' || github.event.inputs.app == 'both' }}
+        if: ${{ github.event.inputs.app == 'java' }}
         run: mvn -B -f CalculatorProject/pom.xml clean package -DskipTests
 
       - name: Upload Java artifact
-        if: ${{ github.event.inputs.app == 'java' || github.event.inputs.app == 'both' }}
+        if: ${{ github.event.inputs.app == 'java' }}
         uses: actions/upload-artifact@v4
         with:
           name: calculator-jar
           path: CalculatorProject/target/CalculatorProject-1.0.jar
 
       - name: Package Python app
-        if: ${{ github.event.inputs.app == 'python' || github.event.inputs.app == 'both' }}
+        if: ${{ github.event.inputs.app == 'python' }}
         run: |
           tar -czf calculator-py.tgz -C CalculatorProjectPy .
 
       - name: Upload Python package
-        if: ${{ github.event.inputs.app == 'python' || github.event.inputs.app == 'both' }}
+        if: ${{ github.event.inputs.app == 'python' }}
         uses: actions/upload-artifact@v4
         with:
           name: calculator-py
@@ -102,6 +102,11 @@ jobs:
         with:
           name: calculator-jar
           path: ./artifact
+      - name: List downloaded artifact
+        if: ${{ github.event.inputs.app == 'java' }}
+        run: |
+          echo "artifact directory contents:"; ls -l artifact || echo "no artifact directory"
+          file artifact/CalculatorProject-1.0.jar || echo "jar not found"
 
       - name: Download Python package
         if: ${{ github.event.inputs.app == 'python' }}
@@ -159,8 +164,12 @@ jobs:
           SERVER_IP: ${{ env.SERVER_IP }}
           SERVER_USER: ${{ secrets.SERVER_USER }}
         run: |
-          scp -i ~/.ssh/id_rsa CalculatorProject/systemd/calculator.service "$SERVER_USER"@"$SERVER_IP":/tmp/calculator.service
-          scp -i ~/.ssh/id_rsa artifact/CalculatorProject-1.0.jar "$SERVER_USER"@"$SERVER_IP":/tmp/CalculatorProject-1.0.jar
+          echo "copying jar to remote host"
+          ls -l artifact || echo "artifact dir missing"
+          scp -v -i ~/.ssh/id_rsa CalculatorProject/systemd/calculator.service "$SERVER_USER"@"$SERVER_IP":/tmp/calculator.service
+          scp -v -i ~/.ssh/id_rsa artifact/CalculatorProject-1.0.jar "$SERVER_USER"@"$SERVER_IP":/tmp/CalculatorProject-1.0.jar
+          echo "remote tmp contents after copy:"
+          ssh -i ~/.ssh/id_rsa "$SERVER_USER"@"$SERVER_IP" "ls -l /tmp | grep CalculatorProject || true"
 
       - name: Copy Python package to server
         if: ${{ github.event.inputs.app == 'python' }}
