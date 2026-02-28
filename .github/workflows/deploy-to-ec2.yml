@@ -9,11 +9,13 @@ on:
     inputs:
       # which application(s) to build/deploy
       app:
-        description: 'Which app to deploy: "java", "python", or "both"'
+        description: 'Which app to deploy: "java" or "python"'
         type: choice
         options:
           - java
           - python
+        # run: echo "Removed invalid run here"  # FIXED: cannot have run under inputs
+
       # target environment for deployment
       environment:
         description: 'Deployment environment: dev, test, or prod'
@@ -22,7 +24,6 @@ on:
           - dev
           - test
           - prod
-
 
 jobs:
   build:
@@ -37,11 +38,12 @@ jobs:
           APP: ${{ github.event.inputs.app }}
         run: |
           case "${APP}" in
-            java|python|both)
+            java|python)
               echo "Deploying app='${APP}'" ;;
             *)
-              echo "ERROR: Invalid app '${APP}'. Choose 'java', 'python' or 'both' via the workflow input." ; exit 1 ;;
+              echo "ERROR: Invalid app '${APP}'. Choose 'java' or 'python' via the workflow input." ; exit 1 ;;
           esac
+
       - name: Validate chosen environment
         env:
           ENV: ${{ github.event.inputs.environment }}
@@ -66,23 +68,39 @@ jobs:
           key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
 
       - name: Build Java jar
-        if: ${{ github.event.inputs.app == 'java' || github.event.inputs.app == 'both' }}
+        if: ${{ github.event.inputs.app == 'java' }}
         run: mvn -B -f CalculatorProject/pom.xml clean package -DskipTests
 
+      # ================= FIXED: Check jar exists =================
+      - name: List built Java jar
+        if: ${{ github.event.inputs.app == 'java' }}
+        run: ls -l CalculatorProject/target/
+
+      - name: Check Java artifact before upload
+        if: ${{ github.event.inputs.app == 'java' }}
+        run: |
+          if [ ! -f CalculatorProject/target/CalculatorProject-1.0.jar ]; then
+            echo "ERROR: JAR not found! Build may have failed."
+            ls -l CalculatorProject/target/
+            exit 1
+          fi
+          echo "JAR exists, size: $(stat -c%s CalculatorProject/target/CalculatorProject-1.0.jar) bytes"
+
       - name: Upload Java artifact
-        if: ${{ github.event.inputs.app == 'java' || github.event.inputs.app == 'both' }}
+        if: ${{ github.event.inputs.app == 'java' }}
         uses: actions/upload-artifact@v4
         with:
           name: calculator-jar
           path: CalculatorProject/target/CalculatorProject-1.0.jar
+          # FIXED: Ensure correct artifact path for download in deploy step
 
       - name: Package Python app
-        if: ${{ github.event.inputs.app == 'python' || github.event.inputs.app == 'both' }}
+        if: ${{ github.event.inputs.app == 'python' }}
         run: |
           tar -czf calculator-py.tgz -C CalculatorProjectPy .
 
       - name: Upload Python package
-        if: ${{ github.event.inputs.app == 'python' || github.event.inputs.app == 'both' }}
+        if: ${{ github.event.inputs.app == 'python' }}
         uses: actions/upload-artifact@v4
         with:
           name: calculator-py
@@ -101,7 +119,13 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: calculator-jar
-          path: ./artifact
+          path: ./artifact  # FIXED: matched the upload path
+
+      - name: List downloaded artifact
+        if: ${{ github.event.inputs.app == 'java' }}
+        run: |
+          echo "artifact directory contents:"; ls -l artifact || echo "no artifact directory"
+          file artifact/CalculatorProject-1.0.jar || echo "jar not found"
 
       - name: Download Python package
         if: ${{ github.event.inputs.app == 'python' }}
@@ -125,6 +149,7 @@ jobs:
             *)
               echo "Unknown environment '${{ github.event.inputs.environment }}'" >&2; exit 1;;
           esac
+
       - name: Prepare SSH
         env:
           SERVER_IP: ${{ env.SERVER_IP }}
@@ -159,8 +184,15 @@ jobs:
           SERVER_IP: ${{ env.SERVER_IP }}
           SERVER_USER: ${{ secrets.SERVER_USER }}
         run: |
-          scp -i ~/.ssh/id_rsa CalculatorProject/systemd/calculator.service "$SERVER_USER"@"$SERVER_IP":/tmp/calculator.service
-          scp -i ~/.ssh/id_rsa artifact/CalculatorProject-1.0.jar "$SERVER_USER"@"$SERVER_IP":/tmp/CalculatorProject-1.0.jar
+          echo "copying jar to remote host"
+          ls -l artifact || echo "artifact dir missing"
+          # ================= FIXED: dynamically find the actual jar =================
+          JAR_FILE=$(ls artifact/*.jar | head -n1)
+          echo "Using jar file: $JAR_FILE"
+          scp -v -i ~/.ssh/id_rsa CalculatorProject/systemd/calculator.service "$SERVER_USER"@"$SERVER_IP":/tmp/calculator.service
+          scp -v -i ~/.ssh/id_rsa "$JAR_FILE" "$SERVER_USER"@"$SERVER_IP":/tmp/CalculatorProject-1.0.jar
+          echo "remote tmp contents after copy:"
+          ssh -i ~/.ssh/id_rsa "$SERVER_USER"@"$SERVER_IP" "ls -l /tmp | grep CalculatorProject || true"
 
       - name: Copy Python package to server
         if: ${{ github.event.inputs.app == 'python' }}
@@ -227,7 +259,6 @@ jobs:
           
           sudo systemctl start calculator.service
           sleep 3
-
           EOF
 
       - name: Install, deploy and restart Python service on EC2
@@ -302,5 +333,3 @@ jobs:
 # - SSH_PRIVATE_KEY : private key with SSH access to the EC2 host
 # - SERVER_IP       : public IP or hostname of the EC2 instance
 # - SERVER_USER     : ssh user (ec2-user, ubuntu, etc.)
-
-#cdvd
