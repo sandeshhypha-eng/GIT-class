@@ -13,7 +13,9 @@
             display: flex;
             justify-content: center;
             align-items: center;
-            background: linear-gradient(135deg, #74b9ff, #a29bfe);
+            background: radial-gradient(circle at 30% 20%, #ff9a9a 0%, #ff4d4d 30%, #cc1010 60%, #800000 100%);
+            background-size: 200% 200%;
+            animation: gradientShift 8s ease infinite;
         }
 
         /* Login box */
@@ -73,6 +75,11 @@
                 width: 90%;
                 padding: 30px 20px;
             }
+        }
+        @keyframes gradientShift {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
         }
     </style>
 </head>
