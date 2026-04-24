@@ -12,6 +12,7 @@ jobs:
       
   copy:
     runs-on: ubuntu-latest
+    needs: hello
     steps:
       - name: Copy file 
         run: cd home | cp -r sandesh sandesh_copy 
