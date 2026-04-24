@@ -1,59 +1,217 @@
-CalculatorProject
-=================
+# 🚀 Manual Deployment of Calculator App on Amazon Linux EC2
 
-Simple Spring Boot calculator service with a static frontend.
+This guide explains how to manually build and deploy the Calculator Spring Boot application on an Amazon Linux EC2 instance (without CI/CD).
 
-Build and run locally
----------------------
+---
 
-2. Run (direct jar on Linux):
+## 📌 Prerequisites
 
-```bash
-java -jar CalculatorProject/target/CalculatorProject-1.0.jar
-```
+* AWS EC2 instance (Amazon Linux)
+* `.pem` key file
+* Security Group with **port 22 (SSH)** open
+* Internet access on EC2
 
-Or use the included start/stop helpers (recommended for background runs):
+---
 
-```bash
-cd CalculatorProject
-# build first
-mvn clean package -DskipTests
-./bin/start.sh
-./bin/stop.sh
-```
-
-Open http://localhost:8080/ to use the frontend.
-```
-
-Run container:
+## 🔐 1. Connect to EC2
 
 ```bash
-docker run -p 8080:8080 --rm calculator:latest
+ssh -i your-key.pem ec2-user@YOUR_EC2_PUBLIC_IP
 ```
 
-Notes
------
-- API endpoints: `/calc/add`, `/calc/sub`, `/calc/mul`, `/calc/div`.
-- Frontend uses the same host (relative paths) so it works when served from the app.
-- Division by zero returns HTTP 400 with an error message.
+---
 
-Logging
--------
-- Logs are written to `./logs/app.log` by default (configurable via `LOG_HOME` environment variable or JVM property `-DLOG_HOME=/path/to/logs`).
-- A rolling daily log with size-based rotation is configured in `src/main/resources/logback-spring.xml`.
-- Incoming requests to the web UI are logged with the performed operation and input values (query params `a` and `b`) and the client IP. See `src/main/java/com/calculator/RequestLoggingFilter.java` for details.
-
-Running as a Linux service (systemd)
-----------------------------------
-Copy the jar to `/opt/calculator` (or your preferred location) and the `systemd/calculator.service` template shows the `ExecStart` to use. Example steps:
+## ⚙️ 2. Install Required Software
 
 ```bash
-sudo mkdir -p /opt/calculator /var/log/calculator
-sudo cp CalculatorProject/target/CalculatorProject-1.0.jar /opt/calculator/
-sudo cp CalculatorProject/systemd/calculator.service /etc/systemd/system/calculator.service
+sudo yum update -y
+
+# Install Java 21
+sudo yum install -y java-21-amazon-corretto
+
+# Install Maven
+sudo yum install -y maven
+
+# Install Git
+sudo yum install -y git
+```
+
+Verify installation:
+
+```bash
+java -version
+mvn -version
+git --version
+```
+
+---
+
+## 📥 3. Clone Repository
+
+```bash
+cd ~
+git clone https://github.com/YOUR_USERNAME/YOUR_REPO.git
+cd YOUR_REPO/CalculatorProject
+```
+
+---
+
+## 🏗️ 4. Build the Application
+
+```bash
+mvn clean package
+```
+
+JAR file will be generated in:
+
+```
+target/CalculatorProject-*.jar
+```
+
+---
+
+## 📁 5. Prepare Deployment Directory
+
+```bash
+mkdir -p ~/calculator-app
+cp target/CalculatorProject-*.jar ~/calculator-app/app.jar
+```
+
+---
+
+## ▶️ 6. Test Run (Optional)
+
+```bash
+cd ~/calculator-app
+java -jar app.jar
+```
+
+Open in browser:
+
+```
+http://YOUR_EC2_PUBLIC_IP:8080
+```
+
+Stop the app:
+
+```
+Ctrl + C
+```
+
+---
+
+## ⚙️ 7. Create systemd Service
+
+```bash
+sudo nano /etc/systemd/system/calculator.service
+```
+
+Paste the following:
+
+```ini
+[Unit]
+Description=Calculator Spring Boot Application
+After=network.target
+
+[Service]
+Type=simple
+User=ec2-user
+WorkingDirectory=/home/ec2-user/calculator-app
+ExecStart=/usr/bin/java -Xmx512m -jar /home/ec2-user/calculator-app/app.jar --server.port=8080
+SuccessExitStatus=143
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
+```
+
+---
+
+## 🔄 8. Start the Service
+
+```bash
 sudo systemctl daemon-reload
-sudo systemctl enable --now calculator.service
-sudo journalctl -u calculator -f
+sudo systemctl enable calculator
+sudo systemctl start calculator
 ```
 
-Adjust the `User` and paths in the unit file as needed.
+---
+
+## 🔍 9. Verify Deployment
+
+```bash
+sudo systemctl status calculator
+```
+
+Check if port is listening:
+
+```bash
+ss -tulnp | grep 8080
+```
+
+---
+
+## 🔓 10. Allow Port 8080 in AWS
+
+Go to:
+
+**EC2 → Security Groups → Inbound Rules**
+
+Add:
+
+* Type: Custom TCP
+* Port: 8080
+* Source: 0.0.0.0/0
+
+---
+
+## 🌐 11. Access Application
+
+```
+http://YOUR_EC2_PUBLIC_IP:8080
+```
+
+---
+
+## 🔁 Updating the Application
+
+```bash
+cd ~/YOUR_REPO
+git pull
+
+cd CalculatorProject
+mvn clean package
+
+cp target/CalculatorProject-*.jar ~/calculator-app/app.jar
+
+sudo systemctl restart calculator
+```
+
+---
+
+## ✅ Done!
+
+Your application is now:
+
+* Running as a background service
+* Auto-restarting on failure
+* Starting on system boot
+
+---
+
+## ⚠️ Troubleshooting
+
+* Check logs:
+
+  ```bash
+  journalctl -u calculator -f
+  ```
+* Restart service:
+
+  ```bash
+  sudo systemctl restart calculator
+  ```
+* Ensure port 8080 is open in Security Group
+
+---
