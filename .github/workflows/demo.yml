@@ -1,0 +1,19 @@
+name: demo pipeline
+
+on:
+  workflow_dispatch:
+
+jobs:
+  hello:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Hello World
+        run: echo "Hello, World!"
+      
+  copy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Copy file 
+        run: cd home
+        run: cp -r sandesh sandesh_copy   
+
