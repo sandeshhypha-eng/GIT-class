@@ -55,7 +55,6 @@ jobs:
           mkdir -p ~/.ssh
           echo "${{ secrets.EC2_SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
-          ssh-keyscan -H "${{ github.event.inputs.environment == 'blue' && secrets.BLUE_EC2_HOST || secrets.GREEN_EC2_HOST }}" >> ~/.ssh/known_hosts
 
       - name: Select target environment
         run: |
@@ -70,6 +69,10 @@ jobs:
             echo "APP_DIR=/home/ec2-user/calculator-app-green" >> $GITHUB_ENV
             echo "APP_PORT=8081" >> $GITHUB_ENV
           fi
+
+      - name: Add target host to known hosts
+        run: |
+          ssh-keyscan -H "$TARGET_HOST" >> ~/.ssh/known_hosts
 
       - name: Copy JAR to target server
         run: |
