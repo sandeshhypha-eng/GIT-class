@@ -115,9 +115,9 @@ After=network.target
 
 [Service]
 Type=simple
-User=ec2-user
-WorkingDirectory=/home/ec2-user/calculator-app
-ExecStart=/usr/bin/java -Xmx512m -jar /home/ec2-user/calculator-app/app.jar --server.port=8080
+User=ubuntu
+WorkingDirectory=/home/ubuntu/app/GIT-class/CalculatorProject
+ExecStart=/usr/bin/java -Xmx512m -jar /home/ubuntu/app/GIT-class/CalculatorProject/target--server.port=8080
 SuccessExitStatus=143
 Restart=always
 RestartSec=5
