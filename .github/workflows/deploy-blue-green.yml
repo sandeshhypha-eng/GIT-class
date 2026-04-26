@@ -1,0 +1,121 @@
+name: Blue/Green Deploy Calculator
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Choose the target environment to deploy'
+        required: true
+        type: choice
+        options:
+          - blue
+          - green
+        default: blue
+
+jobs:
+  build:
+    name: Build Calculator JAR
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Build with Maven
+        run: |
+          cd CalculatorProject
+          mvn -B clean package
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: calculator-jar
+          path: CalculatorProject/target/CalculatorProject-1.0.jar
+
+  deploy:
+    name: Deploy to Blue/Green Environment
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Download build artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: calculator-jar
+          path: ./artifact
+
+      - name: Prepare SSH key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.EC2_SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -H "${{ github.event.inputs.environment == 'blue' && secrets.BLUE_EC2_HOST || secrets.GREEN_EC2_HOST }}" >> ~/.ssh/known_hosts
+
+      - name: Select target environment
+        run: |
+          if [ "${{ github.event.inputs.environment }}" = "blue" ]; then
+            echo "TARGET_HOST=${{ secrets.BLUE_EC2_HOST }}" >> $GITHUB_ENV
+            echo "SERVICE_NAME=calculator-blue" >> $GITHUB_ENV
+            echo "APP_DIR=/home/ec2-user/calculator-app-blue" >> $GITHUB_ENV
+            echo "APP_PORT=8080" >> $GITHUB_ENV
+          else
+            echo "TARGET_HOST=${{ secrets.GREEN_EC2_HOST }}" >> $GITHUB_ENV
+            echo "SERVICE_NAME=calculator-green" >> $GITHUB_ENV
+            echo "APP_DIR=/home/ec2-user/calculator-app-green" >> $GITHUB_ENV
+            echo "APP_PORT=8081" >> $GITHUB_ENV
+          fi
+
+      - name: Copy JAR to target server
+        run: |
+          scp -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no \
+          artifact/CalculatorProject-1.0.jar \
+          ec2-user@${TARGET_HOST}:~/app.jar
+
+      - name: Configure and start target service
+        run: |
+          ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no ec2-user@${TARGET_HOST} bash -s << 'EOF'
+          set -e
+
+          sudo mkdir -p "${APP_DIR}"
+          sudo mv ~/app.jar "${APP_DIR}/app.jar"
+
+          if ! command -v java >/dev/null 2>&1; then
+            echo 'Installing Java...'
+            sudo yum install -y java-21-amazon-corretto
+          fi
+
+          sudo tee /etc/systemd/system/${SERVICE_NAME}.service > /dev/null <<EOL
+          [Unit]
+          Description=Calculator Spring Boot Application (${SERVICE_NAME})
+          After=network.target
+
+          [Service]
+          Type=simple
+          User=ec2-user
+          WorkingDirectory=${APP_DIR}
+          ExecStart=/usr/bin/java -Xmx512m -jar ${APP_DIR}/app.jar --server.port=${APP_PORT}
+          Restart=always
+          RestartSec=5
+
+          [Install]
+          WantedBy=multi-user.target
+          EOL
+
+          sudo systemctl daemon-reload
+          sudo systemctl enable ${SERVICE_NAME}
+          sudo systemctl restart ${SERVICE_NAME}
+          sudo systemctl status ${SERVICE_NAME} --no-pager
+          EOF
+
+      - name: Confirm deployment target
+        run: |
+          echo "Deployed to ${{ github.event.inputs.environment }} environment"
+          echo "Host: ${TARGET_HOST}"
+          echo "Service: ${SERVICE_NAME}"
+          echo "Port: ${APP_PORT}"
