@@ -8,18 +8,22 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
-      - name: Run Snyk to check for vulnerabilities
-        uses: snyk/actions/maven@master
-        env:
-          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
-      - name: install java & mvn
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - name: Install Maven
         run: |
           sudo apt update
-          sudo apt install openjdk-17-jdk -y
           sudo apt install maven -y
           mvn -version
           java -version
-
+      - name: Run Snyk to check for vulnerabilities
+        uses: snyk/actions/maven@v3
+        working-directory: CalculatorProject
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
       - name: Build with maven
         run: |
           mvn clean install
