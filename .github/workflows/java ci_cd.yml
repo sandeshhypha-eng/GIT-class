@@ -25,6 +25,7 @@ jobs:
           args: --file=CalculatorProject/pom.xml
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+          JAVA_HOME: ''
       - name: Build with maven
         run: |
           mvn clean install
