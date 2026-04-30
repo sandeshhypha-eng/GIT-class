@@ -21,7 +21,8 @@ jobs:
           java -version
       - name: Run Snyk to check for vulnerabilities
         uses: snyk/actions/maven@v3
-        working-directory: CalculatorProject
+        with:
+          args: --file=CalculatorProject/pom.xml
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
       - name: Build with maven
