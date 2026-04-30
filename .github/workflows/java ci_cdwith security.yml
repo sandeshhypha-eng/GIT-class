@@ -1,4 +1,4 @@
-name: java ci/cd
+name: java ci/cd security
 on:
   workflow_dispatch:
 
