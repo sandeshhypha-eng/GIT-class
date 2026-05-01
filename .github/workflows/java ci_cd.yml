@@ -17,6 +17,7 @@ jobs:
         uses: snyk/actions/maven-3-jdk-17@master
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+          JAVA_HOME: ''
         with:
           args: --file=CalculatorProject/pom.xml         
       - name: Install Maven
