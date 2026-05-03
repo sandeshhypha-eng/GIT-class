@@ -7,7 +7,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: GIT-CLASS/JAVA-CI-CD/.github/workflows/java%20ci_cd.yml@main
+        uses: actions/checkout@v3
       - name: Set up Java
         uses: actions/setup-java@v4
         with:
