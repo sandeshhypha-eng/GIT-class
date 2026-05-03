@@ -16,11 +16,11 @@ jobs:
       - name: Run Snyk to check for vulnerabilities
         uses: snyk/actions/maven-3-jdk-17@master
         continue-on-error: true
+        with:
+          args: --file=CalculatorProject/pom.xml 
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
-          JAVA_HOME: ''
-        with:
-          args: --file=CalculatorProject/pom.xml         
+          JAVA_HOME: ''        
       - name: Install Maven
         run: |
           sudo apt update
