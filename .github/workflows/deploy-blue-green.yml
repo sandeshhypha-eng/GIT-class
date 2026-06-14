@@ -2,6 +2,7 @@ name: Blue/Green Deploy Calculator
 
 on:
   workflow_dispatch:
+  
     inputs:
       environment:
         description: 'Choose the target environment to deploy'
