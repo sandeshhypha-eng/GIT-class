@@ -18,6 +18,6 @@ jobs:
       - name: check cpu
         run: top -b -n1
       - name: check memory
-        run: fese -m
+        run: free -m
       - name: check disk space
         run: df -h
