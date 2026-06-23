@@ -1,0 +1,107 @@
+name: java ci/cd pipeline
+on:
+  workflow_dispatch:
+
+jobs:
+  server_prep:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Setup SSH key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.EC2_SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+
+      - name: Add EC2 to known_hosts
+        run: |
+          ssh-keyscan -H "${{ secrets.EC2_HOST }}" >> ~/.ssh/known_hosts
+
+      - name: Prepare server for deployment
+        run: |
+          ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no ec2-user@${{ secrets.EC2_HOST }} << 'EOF'
+            # Update package lists
+            sudo apt-get update -y
+
+            # Install Java (OpenJDK 11)
+            echo "Installing OpenJDK 11..."
+            sudo apt-get install -y openjdk-11-jdk
+
+            # Install Maven
+            echo "Installing Maven..."
+            sudo apt-get install -y maven
+
+            # Install Git
+            echo "Installing Git..."
+            sudo apt-get install -y git
+
+            # Verify installations
+            java -version
+            mvn -version
+            git --version
+          EOF
+
+  CI:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+      
+      - name: java setup
+        uses: actions/setup-java@v5
+        with:
+            distribution: 'corretto'
+            java-version: '21'
+
+      - name: change directory
+        run: cd CalculatorProject
+
+      - name: Build with Maven
+        run: mvn clean install 
+
+      - name: upload artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: CalculatorProject    
+  
+
+  CD:
+    runs-on: ubuntu-latest
+    steps:
+      - name: download artifact
+        uses: actions/download-artifact@v3
+        with:
+          name: CalculatorProject
+
+      - name: Setup SSH key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.EC2_SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+
+      - name: Add EC2 to known_hosts
+        run: |
+          ssh-keyscan -H "${{ secrets.EC2_HOST }}" >> ~/.ssh/known_hosts 
+
+      - name: copy artifact to EC2
+        run: |
+          scp -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no CalculatorProject/target/CalculatorProject-1.0.jar ec2-user@${{ secrets.EC2_HOST }}:/home/ec2-user/
+          
+      
+      - name: Run the application on EC2
+        run: |
+          ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no ec2-user@${{ secrets.EC2_HOST }} << 'EOF'
+            # Stop any existing instance of the application
+            cd /home/ec2-user
+            nohup java -jar  CalculatorProject-1.0.jar > app.log 2>&1 & 
+          EOF
+          
+      - name: Verify the application is running
+        run: |
+          ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no ec2-user@${{ secrets.EC2_HOST }} << 'EOF'
+            # Check if the application is running
+            ps -ef | grep java
+          EOF
+
+
+
+       
