@@ -20,19 +20,19 @@ jobs:
         run: |
           ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no ec2-user@${{ secrets.EC2_HOST }} << 'EOF'
             # Update package lists
-            sudo apt-get update -y
+            sudo yum update -y
 
-            # Install Java (OpenJDK 11)
-            echo "Installing OpenJDK 11..."
-            sudo apt-get install -y openjdk-11-jdk
+            # Install Java (OpenJDK 21)
+            echo "Installing OpenJDK 21..."
+            sudo yum install -y openjdk-21-jdk
 
             # Install Maven
             echo "Installing Maven..."
-            sudo apt-get install -y maven
+            sudo yum install -y maven
 
             # Install Git
             echo "Installing Git..."
-            sudo apt-get install -y git
+            sudo yum install -y git
 
             # Verify installations
             java -version
