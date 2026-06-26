@@ -85,7 +85,7 @@ jobs:
 
       - name: copy artifact to EC2
         run: |
-          scp -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no CalculatorProject/target/CalculatorProject-1.0.jar ec2-user@${{ secrets.EC2_HOST }}:/home/ec2-user/
+          scp -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no CalculatorProject-1.0.jar ec2-user@${{ secrets.EC2_HOST }}:/home/ec2-user/
           
       
       - name: Run the application on EC2
