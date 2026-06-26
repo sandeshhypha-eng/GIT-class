@@ -62,7 +62,7 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: CalculatorProject    
-  
+          path: CalculatorProject/target/CalculatorProject-1.0.jar
 
   CD:
     runs-on: ubuntu-latest
