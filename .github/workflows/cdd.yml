@@ -53,12 +53,11 @@ jobs:
             distribution: 'corretto'
             java-version: '21'
 
-      - name: change directory
-        run: cd CalculatorProject
-
       - name: Build with Maven
-        run: mvn clean install 
-
+        run: |
+          cd CalculatorProject
+          mvn clean install 
+         
       - name: upload artifact
         uses: actions/upload-artifact@v7
         with:
