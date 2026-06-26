@@ -8,6 +8,8 @@ deploy (systemd daemon)
    ↓
 verify
    ↓
+   sfgadf
+   gfadsg
 notify
 
 
