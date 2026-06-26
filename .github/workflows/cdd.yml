@@ -5,6 +5,10 @@ on:
     branches:
       - dev
       - prod-branch
+  pull_request:
+    branches:
+      - dev
+      - prod-branch    
 
 jobs:
   server_prep:
@@ -97,6 +101,8 @@ jobs:
           ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no ec2-user@${{ secrets.EC2_HOST }} << 'EOF'
             # Stop any existing instance of the application
             cd /home/ec2-user
+            pkill -f 'java -jar CalculatorProject-1.0.jar' || true
+            sleep 10
             nohup java -jar  CalculatorProject-1.0.jar > app.log 2>&1 & 
           EOF
           
