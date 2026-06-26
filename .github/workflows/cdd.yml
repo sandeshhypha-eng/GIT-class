@@ -1,6 +1,9 @@
 name: java ci/cd pipeline v2
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - dev
 
 jobs:
   server_prep:
