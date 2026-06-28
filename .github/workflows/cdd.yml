@@ -66,12 +66,36 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         run: |
+          mkdir -p sonar-artifacts
           cd CalculatorProject
+          set -o pipefail
           mvn -B verify org.sonarsource.scanner.maven:sonar-maven-plugin:sonar \
             -Dsonar.organization=${{ secrets.SONAR_ORGANIZATION }} \
             -Dsonar.projectKey=${{ secrets.SONAR_PROJECT_KEY }} \
             -Dsonar.projectName=${{ secrets.SONAR_PROJECT_NAME }} \
-            -Dsonar.host.url=https://sonarcloud.io
+            -Dsonar.host.url=https://sonarcloud.io \
+            -Dsonar.java.binaries=target/classes | tee ../sonar-artifacts/sonar-scan.log
+
+      - name: Save Sonar scan details
+        if: always()
+        run: |
+          mkdir -p sonar-artifacts
+          echo "Repository: $GITHUB_REPOSITORY" > sonar-artifacts/sonar-summary.txt
+          echo "Branch: $GITHUB_REF_NAME" >> sonar-artifacts/sonar-summary.txt
+          echo "Commit: $GITHUB_SHA" >> sonar-artifacts/sonar-summary.txt
+          if [ -f CalculatorProject/target/sonar/report-task.txt ]; then
+            cp CalculatorProject/target/sonar/report-task.txt sonar-artifacts/
+          fi
+          if [ -d CalculatorProject/.scannerwork ]; then
+            cp -R CalculatorProject/.scannerwork sonar-artifacts/.scannerwork || true
+          fi
+
+      - name: Upload Sonar scan artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sonar-scan-report
+          path: sonar-artifacts
 
   CI:
     runs-on: ubuntu-latest
