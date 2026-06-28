@@ -62,13 +62,17 @@ jobs:
           java-version: '21'
 
       - name: SonarCloud Scan
-        uses: SonarSource/sonarqube-scan-action@v7
+        uses: SonarSource/sonarqube-scan-action@v8  # Upgraded to latest stable v8
+        env:
+         SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}        
         with:
-          organization: ${{ secrets.SONAR_ORGANIZATION }}
-          token: ${{ secrets.SONAR_TOKEN }}
-          projectBaseDir: CalculatorProject
-          projectKey: ${{ secrets.SONAR_PROJECT_KEY }}
-          projectName: ${{ secrets.SONAR_PROJECT_NAME }}
+         projectBaseDir: CalculatorProject
+          args: >
+            -Dsonar.organization=${{ secrets.SONAR_ORGANIZATION }}
+            -Dsonar.projectKey=${{ secrets.SONAR_PROJECT_KEY }}
+            -Dsonar.projectName=${{ secrets.SONAR_PROJECT_NAME }}
+            -Dsonar.host.url=https://sonarcloud.io
+ 
 
 
   CI:
