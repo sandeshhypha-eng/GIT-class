@@ -62,7 +62,7 @@ jobs:
           java-version: '21'
 
       - name: SonarCloud Scan
-        uses: SonarSource/sonarcloud-github-action@v4
+        uses: SonarSource/sonarcloud-github-action@v8
         with:
           organization: ${{ secrets.SONAR_ORGANIZATION }}
           token: ${{ secrets.SONAR_TOKEN }}
